@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { 
-  Truck, Bell, LogOut, Shield, User, Eye, Loader2, 
+  Truck, Bell, LogOut, User, Loader2, 
   Mic, CreditCard, Milk, BarChart3, HandCoins, Clock 
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
@@ -187,7 +187,7 @@ export default function CenteringYardManager() {
       if (chits) {
         setMargadarshiChits(chits.map((c: any) => ({
           ...c,
-          payments: (chitPays || []).filter((p: any) => p.chit_id === c.id)
+          payments: (chitPays || []).filter((p: any) => p.chit_id === c.id).map((cp: any) => ({ ...cp, amount: cp.amount || cp.payment_amount || 0 }))
         })));
       }
 
@@ -247,7 +247,7 @@ export default function CenteringYardManager() {
     jcRepayments.forEach((jr) => { if (isCentering(jr.source)) centeringOutflows += Number(jr.amount); });
     cardRepayments.forEach((cr) => { if (isCentering(cr.source)) centeringOutflows += Number(cr.amount); });
     vehicleEmis.forEach((v) => (v.payments || []).forEach((vp) => { if (isCentering(vp.source)) centeringOutflows += Number(vp.amount); }));
-    margadarshiChits.forEach((m) => (m.payments || []).forEach((mp) => { if (isCentering(mp.source)) centeringOutflows += Number(mp.amount); }));
+    margadarshiChits.forEach((m) => (m.payments || []).forEach((mp: any) => { if (isCentering(mp.source)) centeringOutflows += Number(mp.amount || 0); }));
     dharmasthalaChits.forEach((d) => (d.payments || []).forEach((dp) => { if (isCentering(dp.source)) centeringOutflows += Number(dp.amount); }));
 
     const centeringNet = Math.max(0, Math.round(centeringGross - centeringOutflows));
@@ -263,7 +263,7 @@ export default function CenteringYardManager() {
     jcRepayments.forEach((jr) => { if (isDairy(jr.source)) dairyOutflows += Number(jr.amount); });
     cardRepayments.forEach((cr) => { if (isDairy(cr.source)) dairyOutflows += Number(cr.amount); });
     vehicleEmis.forEach((v) => (v.payments || []).forEach((vp) => { if (isDairy(vp.source)) dairyOutflows += Number(vp.amount); }));
-    margadarshiChits.forEach((m) => (m.payments || []).forEach((mp) => { if (isDairy(mp.source)) dairyOutflows += Number(mp.amount); }));
+    margadarshiChits.forEach((m) => (m.payments || []).forEach((mp: any) => { if (isDairy(mp.source)) dairyOutflows += Number(mp.amount || 0); }));
     dharmasthalaChits.forEach((d) => (d.payments || []).forEach((dp) => { if (isDairy(dp.source)) dairyOutflows += Number(dp.amount); }));
 
     const dairyNet = Math.max(0, Math.round(dairyGross - dairyOutflows));
@@ -279,7 +279,7 @@ export default function CenteringYardManager() {
     jcRepayments.forEach((jr) => { if (isSalary(jr.source)) salaryOutflows += Number(jr.amount); });
     cardRepayments.forEach((cr) => { if (isSalary(cr.source)) salaryOutflows += Number(cr.amount); });
     vehicleEmis.forEach((v) => (v.payments || []).forEach((vp) => { if (isSalary(vp.source)) salaryOutflows += Number(vp.amount); }));
-    margadarshiChits.forEach((m) => (m.payments || []).forEach((mp) => { if (isSalary(mp.source)) salaryOutflows += Number(mp.amount); }));
+    margadarshiChits.forEach((m) => (m.payments || []).forEach((mp: any) => { if (isSalary(mp.source)) salaryOutflows += Number(mp.amount || 0); }));
     dharmasthalaChits.forEach((d) => (d.payments || []).forEach((dp) => { if (isSalary(dp.source)) salaryOutflows += Number(dp.amount); }));
 
     const salaryNet = Math.max(0, Math.round(salaryGross - salaryOutflows));
@@ -295,7 +295,7 @@ export default function CenteringYardManager() {
     jcRepayments.forEach((jr) => { if (isLifted(jr.source)) liftedOutflows += Number(jr.amount); });
     cardRepayments.forEach((cr) => { if (isLifted(cr.source)) liftedOutflows += Number(cr.amount); });
     vehicleEmis.forEach((v) => (v.payments || []).forEach((vp) => { if (isLifted(vp.source)) liftedOutflows += Number(vp.amount); }));
-    margadarshiChits.forEach((m) => (m.payments || []).forEach((mp) => { if (isLifted(mp.source)) liftedOutflows += Number(mp.amount); }));
+    margadarshiChits.forEach((m) => (m.payments || []).forEach((mp: any) => { if (isLifted(mp.source)) liftedOutflows += Number(mp.amount || 0); }));
     dharmasthalaChits.forEach((d) => (d.payments || []).forEach((dp) => { if (isLifted(dp.source)) liftedOutflows += Number(dp.amount); }));
 
     const liftedNet = Math.max(0, Math.round(liftedGross - liftedOutflows));
@@ -314,7 +314,7 @@ export default function CenteringYardManager() {
         jcRepayments.forEach((jr) => { if (isThisLoan(jr.source)) loanSpent += Number(jr.amount); });
         cardRepayments.forEach((cr) => { if (isThisLoan(cr.source)) loanSpent += Number(cr.amount); });
         vehicleEmis.forEach((v) => (v.payments || []).forEach((vp) => { if (isThisLoan(vp.source)) loanSpent += Number(vp.amount); }));
-        margadarshiChits.forEach((m) => (m.payments || []).forEach((mp) => { if (isThisLoan(mp.source)) loanSpent += Number(mp.amount); }));
+        margadarshiChits.forEach((m) => (m.payments || []).forEach((mp: any) => { if (isThisLoan(mp.source)) loanSpent += Number(mp.amount || 0); }));
         dharmasthalaChits.forEach((d) => (d.payments || []).forEach((dp) => { if (isThisLoan(dp.source)) loanSpent += Number(dp.amount); }));
 
         const loanRemaining = Math.max(0, Math.round(loanTotal - loanSpent));
@@ -618,7 +618,6 @@ export default function CenteringYardManager() {
           <DharmasthalaSection
             chits={dharmasthalaChits}
             currentUser={currentUser}
-            availableSources={dynamicSources}
             onRefresh={fetchData}
             formatDate={formatDateWithDay}
           />

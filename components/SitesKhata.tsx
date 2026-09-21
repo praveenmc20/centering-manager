@@ -132,7 +132,6 @@ export default function SitesKhata({
     }
   };
 
-  // Pure Erase / Wave-off function (Does NOT touch graph or invoice total)
   const handleEraseBalance = async (order: Order) => {
     if (!confirm(`Erase pending balance for ${order.customerName} and mark as fully cleared?`)) return;
     setLoading(true);
@@ -178,11 +177,11 @@ export default function SitesKhata({
       const html2pdf = (await import("html2pdf.js")).default;
       const element = invoiceRef.current;
       const opt = {
-        margin: [6, 6, 6, 6],
+        margin: [6, 6, 6, 6] as [number, number, number, number],
         filename: `Brothers_Invoice_${order.id}_${order.customerName.replace(/\s+/g, "_")}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
+        image: { type: "jpeg" as const, quality: 0.98 },
         html2canvas: { scale: 2.5, useCORS: true, letterRendering: true },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const }
       };
 
       await html2pdf().set(opt).from(element).save();
@@ -325,7 +324,6 @@ _Thank you for choosing Brothers Centering Yard._`;
                       <IndianRupee className="w-4 h-4" /> Add Payment
                     </button>
 
-                    {/* ERASE / WAVE OFF BUTTON */}
                     <button
                       onClick={() => handleEraseBalance(ord)}
                       className="bg-slate-700 hover:bg-red-600/30 text-amber-300 hover:text-red-300 border border-amber-500/40 font-semibold px-3 py-1.5 rounded-lg text-[11px] flex items-center justify-center gap-1 transition"
@@ -464,9 +462,7 @@ _Thank you for choosing Brothers Centering Yard._`;
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* ⭐️ ULTRA-PREMIUM CORPORATE PDF BILL MODAL ⭐️ */}
-      {/* ========================================================================= */}
+      {/* Bill Receipt Modal */}
       {billReceiptOrder && (() => {
         const { initialAgreedTotal, actualFinalBill, totalSaved, showDiscount, days } = calculateReceiptDiscount(billReceiptOrder);
         const totalPaid = getTotalPaid(billReceiptOrder.payments);
@@ -479,7 +475,6 @@ _Thank you for choosing Brothers Centering Yard._`;
           <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
             <div className="bg-[#020617] border-2 border-amber-500/40 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[95vh]">
               
-              {/* Top Action Bar */}
               <div className="bg-[#0b1329] px-5 py-3.5 border-b border-slate-800 flex justify-between items-center print:hidden">
                 <span className="text-xs font-bold text-amber-400 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" /> Tamper-Proof Digital PDF Tax Invoice
@@ -508,19 +503,16 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
               </div>
 
-              {/* RENDERABLE PREMIUM INVOICE */}
               <div 
                 ref={invoiceRef} 
                 className="p-6 sm:p-8 bg-[#0a0f1d] text-white overflow-y-auto space-y-6 font-sans relative border-t-4 border-amber-500"
               >
-                {/* Background Watermark */}
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] select-none">
                   <h1 className="text-9xl font-black uppercase text-white tracking-widest rotate-[-25deg]">
                     BROTHERS
                   </h1>
                 </div>
 
-                {/* Header with Official Logo & Updated Phone Numbers */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b border-slate-800/90 gap-4 relative z-10">
                   <div className="flex items-center gap-3.5">
                     <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-xl border border-amber-500/40 bg-black flex-shrink-0">
@@ -551,7 +543,6 @@ _Thank you for choosing Brothers Centering Yard._`;
                   </div>
                 </div>
 
-                {/* Client Destination Card */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800 relative z-10 text-xs">
                   <div>
                     <span className="text-[10px] uppercase font-black tracking-wider text-slate-500 block">CLIENT BILLING DETAILS:</span>
@@ -572,7 +563,6 @@ _Thank you for choosing Brothers Centering Yard._`;
                   </div>
                 </div>
 
-                {/* Materials Breakdown Table */}
                 <div className="relative z-10 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60">
                   <table className="w-full text-left text-xs">
                     <thead>
@@ -599,7 +589,6 @@ _Thank you for choosing Brothers Centering Yard._`;
                         );
                       })}
 
-                      {/* Ashok Leyland Delivery Row */}
                       <tr className="bg-slate-900/40 font-sans font-semibold">
                         <td colSpan={4} className="py-2.5 px-4 text-blue-300">
                           🚚 Ashok Leyland Site Delivery Freight
@@ -612,9 +601,7 @@ _Thank you for choosing Brothers Centering Yard._`;
                   </table>
                 </div>
 
-                {/* GPS Stamp + Final Financial Statement */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 relative z-10">
-                  {/* Left: GPS Camera Geotag Verification */}
                   <div className="space-y-2 text-xs">
                     {billReceiptOrder.sitePhotos && billReceiptOrder.sitePhotos.length > 0 && (
                       <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center gap-3">
@@ -639,7 +626,6 @@ _Thank you for choosing Brothers Centering Yard._`;
                     </p>
                   </div>
 
-                  {/* Right: Premium Financial Matrix Box */}
                   <div className="p-4 bg-slate-900/95 border-2 border-slate-800 rounded-xl space-y-2 text-xs font-mono">
                     {showDiscount && (
                       <>
@@ -672,7 +658,6 @@ _Thank you for choosing Brothers Centering Yard._`;
                   </div>
                 </div>
 
-                {/* Computer-Generated Bill Statement (No Signature Required) */}
                 <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center gap-3 relative z-10 text-xs">
                   <div className="text-center sm:text-left">
                     <span className="block font-bold text-white tracking-wide">BROTHERS CENTERING & TRANSPORT</span>
@@ -688,7 +673,6 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
               </div>
 
-              {/* Bottom Action Footer */}
               <div className="bg-[#0b1329] p-4 border-t border-slate-800 flex justify-end gap-3">
                 <button
                   onClick={() => setBillReceiptOrder(null)}
