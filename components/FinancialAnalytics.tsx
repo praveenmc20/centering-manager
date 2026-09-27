@@ -115,7 +115,7 @@ export default function FinancialAnalytics({
       allOutflowItems.push({
         id: `pe-${e.id}`,
         person: "Pavan",
-        title: e.note || "Direct Expense / Spend",
+        title: e.reason_text || "Direct Expense / Spend",
         amount: Number(e.amount || 0),
         source: e.source,
         date: e.expense_date
@@ -128,7 +128,7 @@ export default function FinancialAnalytics({
       allOutflowItems.push({
         id: `je-${e.id}`,
         person: "JC",
-        title: e.note || "Direct Expense / Spend",
+        title: e.reason_text|| "Direct Expense / Spend",
         amount: Number(e.amount || 0),
         source: e.source,
         date: e.expense_date
