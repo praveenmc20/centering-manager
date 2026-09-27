@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react";
 import { 
   MapPin, Phone, Calendar, Truck, Edit3, IndianRupee, 
   Receipt, Trash2, Camera, X, Share2, Loader2, Download, 
-  CheckCircle2, ShieldCheck, FileText, Sparkles, Check, CheckCheck
+  CheckCircle2, ShieldCheck, FileText, Sparkles, Check, CheckCheck, Image as ImageIcon
 } from "lucide-react";
 import { supabase } from "../app/lib/supabase";
 import { Order, Item, Payment, SitePhotoItem } from "../types";
@@ -40,6 +40,7 @@ export default function SitesKhata({
 
   const [loading, setLoading] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [photoGenerating, setPhotoGenerating] = useState(false);
   const invoiceRef = useRef<HTMLDivElement | null>(null);
 
   const getTotalPaid = (payments: Payment[]) => payments.reduce((acc, p) => acc + Number(p.amount), 0);
@@ -170,6 +171,14 @@ export default function SitesKhata({
     return { initialAgreedTotal, actualFinalBill, totalSaved, showDiscount: totalSaved >= 50, days };
   };
 
+  const getCorrectReturnDateStr = (order: Order, days: number) => {
+    if (order.returnDate) return formatDate(order.returnDate);
+    if (!order.dispatchDate) return "";
+    const d = new Date(order.dispatchDate + "T00:00:00");
+    d.setDate(d.getDate() + Math.max(0, days - 1));
+    return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  };
+
   const downloadPremiumPDF = async (order: Order) => {
     if (!invoiceRef.current) return;
     setPdfGenerating(true);
@@ -192,19 +201,42 @@ export default function SitesKhata({
     }
   };
 
+  const downloadBillAsPhoto = async (order: Order) => {
+    if (!invoiceRef.current) return;
+    setPhotoGenerating(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(invoiceRef.current, {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        backgroundColor: "#ffffff"
+      });
+
+      const imageURL = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.href = imageURL;
+      downloadLink.download = `Brothers_Bill_${order.id}_${order.customerName.replace(/\s+/g, "_")}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } catch (err: any) {
+      alert("Error generating bill photo: " + err.message);
+    } finally {
+      setPhotoGenerating(false);
+    }
+  };
+
   const shareReceiptToWhatsApp = async (order: Order) => {
     const { initialAgreedTotal, actualFinalBill, totalSaved, showDiscount, days } = calculateReceiptDiscount(order);
     const totalPaid = getTotalPaid(order.payments);
     const balance = Math.max(0, actualFinalBill - totalPaid);
-    const returnDateStr = order.returnDate ? formatDate(order.returnDate) : calculateReturnDateString(order.dispatchDate, days);
+    const returnDateStr = getCorrectReturnDateStr(order, days);
 
     await downloadPremiumPDF(order);
 
     let itemsText = order.items.map(i => `  • ${i.name} [${i.qty} Pcs @ ₹${i.finalRate || i.initialRate}/day]`).join("\n");
     let discountSection = showDiscount ? `\n🏷️ *Initial Value:* ₹${initialAgreedTotal}\n🎉 *Bargain / Discount:* ₹${totalSaved}` : "";
-    let photoProofSection = order.sitePhotos && order.sitePhotos.length > 0 
-      ? `\n\n📸 *Tamper-Proof GPS Site Geotag:* ${order.sitePhotos[0].url}`
-      : "";
 
     const message = `🏛️ *BROTHERS CENTERING & TRANSPORT*
 _Ashok Leyland Logistics & Building Centering Materials_
@@ -224,11 +256,9 @@ ${itemsText}
 ✅ *TOTAL RECEIVED:* ₹${totalPaid}
 🔴 *BALANCE PAYABLE:* ₹${balance}
 ------------------------------------------------
-📌 *STATUS:* ${balance === 0 ? "PAID IN FULL & SETTLED ✅" : `BALANCE PENDING (₹${balance}) ⏳`}${photoProofSection}
+📌 *STATUS:* ${balance === 0 ? "PAID IN FULL & SETTLED ✅" : `BALANCE PENDING (₹${balance}) ⏳`}
 
-*Note:* This is a computer-generated invoice. No signature is required.
 📞 *Contact:* 8123238826 / 8970685284
-
 _Thank you for choosing Brothers Centering Yard._`;
 
     const encoded = encodeURIComponent(message);
@@ -467,26 +497,24 @@ _Thank you for choosing Brothers Centering Yard._`;
         const { initialAgreedTotal, actualFinalBill, totalSaved, showDiscount, days } = calculateReceiptDiscount(billReceiptOrder);
         const totalPaid = getTotalPaid(billReceiptOrder.payments);
         const balance = Math.max(0, actualFinalBill - totalPaid);
-        const returnDateStr = billReceiptOrder.returnDate 
-          ? formatDate(billReceiptOrder.returnDate) 
-          : calculateReturnDateString(billReceiptOrder.dispatchDate, days);
+        const returnDateStr = getCorrectReturnDateStr(billReceiptOrder, days);
 
         return (
           <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-            <div className="bg-[#020617] border-2 border-amber-500/40 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[95vh]">
+            <div className="bg-[#ffffff] border-2 border-slate-300 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[95vh]">
               
-              <div className="bg-[#0b1329] px-5 py-3.5 border-b border-slate-800 flex justify-between items-center print:hidden">
+              <div className="bg-[#0f172a] px-5 py-3.5 border-b border-slate-800 flex justify-between items-center print:hidden">
                 <span className="text-xs font-bold text-amber-400 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Tamper-Proof Digital PDF Tax Invoice
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Official Corporate Tax Invoice
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
-                    onClick={() => downloadPremiumPDF(billReceiptOrder)}
-                    disabled={pdfGenerating}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition shadow"
+                    onClick={() => downloadBillAsPhoto(billReceiptOrder)}
+                    disabled={photoGenerating}
+                    className="bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition shadow"
                   >
-                    {pdfGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    Download PDF
+                    {photoGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                    Send Bill Photo (.png)
                   </button>
                   <button
                     onClick={() => shareReceiptToWhatsApp(billReceiptOrder)}
@@ -503,97 +531,90 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
               </div>
 
+              {/* Professional Light Corporate Invoice Template referencing local public assets */}
               <div 
                 ref={invoiceRef} 
-                className="p-6 sm:p-8 bg-[#0a0f1d] text-white overflow-y-auto space-y-6 font-sans relative border-t-4 border-amber-500"
+                style={{ backgroundColor: "#ffffff", color: "#1e293b", padding: "32px", fontFamily: "sans-serif", position: "relative" }}
+                className="overflow-y-auto space-y-6"
               >
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] select-none">
-                  <h1 className="text-9xl font-black uppercase text-white tracking-widest rotate-[-25deg]">
-                    BROTHERS
-                  </h1>
-                </div>
-
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b border-slate-800/90 gap-4 relative z-10">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-xl border border-amber-500/40 bg-black flex-shrink-0">
-                      <img src="/icon.png" alt="JC Logo" className="w-full h-full object-cover" />
+                {/* Top Banner / Header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #e2e8f0", paddingBottom: "20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                    {/* JC Logo without any green border */}
+                    <div style={{ width: "54px", height: "54px", borderRadius: "12px", background: "#0f172a", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <img src="/icon.png" alt="JC Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     </div>
                     <div>
-                      <span className="text-[10px] font-mono tracking-widest uppercase text-amber-400 font-bold">
-                        JC GROUP'S ENTERPRISE
-                      </span>
-                      <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                      <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, letterSpacing: "-0.5px" }}>
                         BROTHERS CENTERING & TRANSPORT
                       </h1>
-                      <p className="text-[11px] text-slate-400">
-                        Ashok Leyland Logistics • Heavy Concrete Column Box Molds
+                      <p style={{ fontSize: "11px", color: "#64748b", margin: "2px 0 0 0" }}>
+                        Ashok Leyland Logistics & Heavy Column Box Molds
                       </p>
-                      <p className="text-[11px] text-amber-400 font-semibold mt-0.5">
+                      <p style={{ fontSize: "11px", color: "#16a34a", fontWeight: "700", margin: "2px 0 0 0" }}>
                         Karnataka, India • 📞 8123238826 / 8970685284
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-left sm:text-right bg-slate-900/90 p-3 rounded-xl border border-slate-800">
-                    <span className="text-[9px] uppercase font-black px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
-                      COMMERCIAL INVOICE
-                    </span>
-                    <h3 className="text-sm font-mono font-black text-white mt-1">#{billReceiptOrder.id}</h3>
-                    <p className="text-[10px] text-slate-400">Date: {formatDate(new Date().toISOString().split("T")[0])}</p>
+                  <div style={{ textAlign: "right" }}>
+                    <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#16a34a", margin: 0, letterSpacing: "1px" }}>INVOICE</h2>
+                    <p style={{ fontSize: "12px", color: "#0f172a", fontWeight: "bold", margin: "4px 0 2px 0" }}>Invoice Number: <span style={{ fontFamily: "monospace" }}>#{billReceiptOrder.id}</span></p>
+                    <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>Date: {formatDate(new Date().toISOString().split("T")[0])}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800 relative z-10 text-xs">
+                {/* Bill To & Invoice From */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", fontSize: "12px" }}>
                   <div>
-                    <span className="text-[10px] uppercase font-black tracking-wider text-slate-500 block">CLIENT BILLING DETAILS:</span>
-                    <h4 className="text-base font-extrabold text-white mt-0.5">{billReceiptOrder.customerName}</h4>
-                    <span className="text-slate-300 flex items-center gap-1.5 mt-1"><Phone className="w-3 h-3 text-amber-400" /> {billReceiptOrder.customerPhone}</span>
-                    <span className="text-slate-300 flex items-center gap-1.5 mt-0.5"><MapPin className="w-3 h-3 text-amber-400" /> {billReceiptOrder.place}</span>
+                    <span style={{ fontSize: "10px", textTransform: "uppercase", fontWeight: "900", letterSpacing: "1px", color: "#16a34a", display: "block", marginBottom: "4px" }}>Invoice To:</span>
+                    <h3 style={{ fontSize: "15px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px 0" }}>{billReceiptOrder.customerName}</h3>
+                    <p style={{ color: "#475569", margin: "2px 0" }}>📍 {billReceiptOrder.place}</p>
+                    <p style={{ color: "#475569", margin: "2px 0" }}>📞 {billReceiptOrder.customerPhone}</p>
                   </div>
 
-                  <div className="sm:text-right space-y-1">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-slate-500 block">RENTAL CYCLE TIMELINE:</span>
-                    <div className="text-slate-300">Dispatched: <strong className="text-white">{formatDate(billReceiptOrder.dispatchDate)}</strong></div>
-                    <div className="text-slate-300">Return / Settle: <strong className="text-white">{returnDateStr}</strong></div>
-                    <div className="pt-1">
-                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded text-[11px] font-bold">
-                        Duration: {days} Days on Site
-                      </span>
-                    </div>
+                  <div>
+                    <span style={{ fontSize: "10px", textTransform: "uppercase", fontWeight: "900", letterSpacing: "1px", color: "#16a34a", display: "block", marginBottom: "4px" }}>Rental Cycle Timeline:</span>
+                    <p style={{ color: "#475569", margin: "2px 0" }}>Dispatched: <strong style={{ color: "#0f172a" }}>{formatDate(billReceiptOrder.dispatchDate)}</strong></p>
+                    <p style={{ color: "#475569", margin: "2px 0" }}>Return / Settle: <strong style={{ color: "#0f172a" }}>{returnDateStr}</strong></p>
+                    <p style={{ color: "#0f172a", fontWeight: "bold", marginTop: "4px" }}>Duration: {days} Days on Site</p>
                   </div>
                 </div>
 
-                <div className="relative z-10 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/60">
-                  <table className="w-full text-left text-xs">
+                {/* Items Table */}
+                <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "12px" }}>
                     <thead>
-                      <tr className="bg-[#0b1329] text-amber-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
-                        <th className="py-2.5 px-4">Materials Supplied</th>
-                        <th className="py-2.5 px-2 text-center">Qty</th>
-                        <th className="py-2.5 px-2 text-right">Rate / Day</th>
-                        <th className="py-2.5 px-2 text-center">Days</th>
-                        <th className="py-2.5 px-4 text-right">Total (₹)</th>
+                      <tr style={{ background: "#16a34a", color: "#ffffff", fontWeight: "bold", textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.5px" }}>
+                        <th style={{ padding: "10px 14px" }}>No. / Product Description</th>
+                        <th style={{ padding: "10px 8px", textAlign: "center" }}>Qty</th>
+                        <th style={{ padding: "10px 8px", textAlign: "right" }}>Rate / Day</th>
+                        <th style={{ padding: "10px 8px", textAlign: "center" }}>Days</th>
+                        <th style={{ padding: "10px 14px", textAlign: "right" }}>Total (₹)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/70 text-slate-300 font-mono">
+                    <tbody style={{ fontFamily: "monospace", color: "#334155" }}>
                       {billReceiptOrder.items.map((it, idx) => {
                         const rate = it.finalRate || it.initialRate;
                         const lineTotal = it.qty * rate * days;
                         return (
-                          <tr key={idx} className="hover:bg-slate-900/40">
-                            <td className="py-2.5 px-4 font-sans font-semibold text-white">{it.name}</td>
-                            <td className="py-2.5 px-2 text-center text-slate-300">{it.qty}</td>
-                            <td className="py-2.5 px-2 text-right text-slate-300">₹{rate}</td>
-                            <td className="py-2.5 px-2 text-center text-slate-300">{days}</td>
-                            <td className="py-2.5 px-4 text-right font-bold text-amber-400">₹{lineTotal.toLocaleString("en-IN")}</td>
+                          <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0", background: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
+                            <td style={{ padding: "10px 14px", fontFamily: "sans-serif", fontWeight: "600", color: "#0f172a" }}>
+                              {idx + 1 < 10 ? `0${idx + 1}` : idx + 1}. {it.name}
+                            </td>
+                            <td style={{ padding: "10px 8px", textAlign: "center" }}>{it.qty}</td>
+                            <td style={{ padding: "10px 8px", textAlign: "right" }}>₹{rate}</td>
+                            <td style={{ padding: "10px 8px", textAlign: "center" }}>{days}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: "bold", color: "#0f172a" }}>₹{lineTotal.toLocaleString("en-IN")}</td>
                           </tr>
                         );
                       })}
 
-                      <tr className="bg-slate-900/40 font-sans font-semibold">
-                        <td colSpan={4} className="py-2.5 px-4 text-blue-300">
+                      <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
+                        <td colSpan={4} style={{ padding: "10px 14px", fontFamily: "sans-serif", fontWeight: "600", color: "#0284c7" }}>
                           🚚 Ashok Leyland Site Delivery Freight
                         </td>
-                        <td className="py-2.5 px-4 text-right font-mono font-bold text-blue-400">
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
                           ₹{(billReceiptOrder.transportSettled || billReceiptOrder.transportAgreed).toLocaleString("en-IN")}
                         </td>
                       </tr>
@@ -601,79 +622,82 @@ _Thank you for choosing Brothers Centering Yard._`;
                   </table>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 relative z-10">
-                  <div className="space-y-2 text-xs">
-                    {billReceiptOrder.sitePhotos && billReceiptOrder.sitePhotos.length > 0 && (
-                      <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center gap-3">
-                        <img 
-                          src={billReceiptOrder.sitePhotos[0].url} 
-                          alt="Site Verification" 
-                          className="w-14 h-14 object-cover rounded-lg border border-amber-500/30 flex-shrink-0" 
-                        />
-                        <div>
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> GPS Verified On-Site Proof
-                          </span>
-                          <span className="text-[11px] text-slate-400 block mt-0.5 leading-tight">
-                            Coordinates: 12.3284° N, 76.6126° E
-                          </span>
-                          <span className="text-[10px] text-slate-500">Tamper-Proof System Timestamp</span>
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-[10px] text-slate-500 italic">
-                      * All materials must be returned intact. Damages will be assessed upon site return.
+                {/* Subtotals & Grand Total Section */}
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", alignItems: "start" }}>
+                  <div>
+                    <h4 style={{ fontSize: "11px", fontWeight: "800", color: "#0f172a", textTransform: "uppercase", margin: "0 0 6px 0" }}>Terms & Conditions:</h4>
+                    <p style={{ fontSize: "10px", color: "#64748b", lineHeight: "1.4", margin: 0 }}>
+                      1. All rental items must be returned in good condition. Damages will be assessed upon return.<br />
+                      2. Payment is due immediately upon receipt of this commercial invoice.<br />
+                      3. GPS Verified On-Site Proof logged securely in JC Group's system.
                     </p>
                   </div>
 
-                  <div className="p-4 bg-slate-900/95 border-2 border-slate-800 rounded-xl space-y-2 text-xs font-mono">
+                  <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "10px", padding: "14px", fontSize: "12px", fontFamily: "monospace" }}>
                     {showDiscount && (
                       <>
-                        <div className="flex justify-between text-slate-400 font-sans">
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b", fontFamily: "sans-serif", marginBottom: "4px" }}>
                           <span>Original Value:</span>
                           <span>₹{initialAgreedTotal.toLocaleString("en-IN")}</span>
                         </div>
-                        <div className="flex justify-between text-emerald-400 font-bold font-sans">
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#16a34a", fontWeight: "bold", fontFamily: "sans-serif", marginBottom: "6px" }}>
                           <span>Bargain / Discount:</span>
                           <span>-₹{totalSaved.toLocaleString("en-IN")}</span>
                         </div>
                       </>
                     )}
-                    <div className="flex justify-between font-bold text-sm text-white pt-1 border-t border-slate-800 font-sans">
-                      <span>Final Bill:</span>
-                      <span className="font-mono text-amber-400">₹{actualFinalBill.toLocaleString("en-IN")}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", color: "#0f172a", fontFamily: "sans-serif", paddingBottom: "6px", borderBottom: "1px solid #cbd5e1" }}>
+                      <span>Subtotal:</span>
+                      <span>₹{actualFinalBill.toLocaleString("en-IN")}</span>
                     </div>
-                    <div className="flex justify-between text-emerald-400 font-sans">
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "#16a34a", fontFamily: "sans-serif", paddingTop: "6px" }}>
                       <span>Total Paid:</span>
-                      <span className="font-mono">-₹{totalPaid.toLocaleString("en-IN")}</span>
+                      <span>-₹{totalPaid.toLocaleString("en-IN")}</span>
                     </div>
-                    <div className="flex justify-between items-center font-black text-base pt-2 border-t border-slate-800 font-sans">
-                      <span className={balance === 0 ? "text-emerald-400" : "text-red-400"}>
-                        {balance === 0 ? "STATUS: PAID IN FULL" : "BALANCE PAYABLE:"}
-                      </span>
-                      <span className={`text-lg font-mono ${balance === 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        ₹{balance.toLocaleString("en-IN")}
-                      </span>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#16a34a", color: "#ffffff", padding: "10px 12px", borderRadius: "8px", fontWeight: "900", fontSize: "15px", marginTop: "10px", fontFamily: "sans-serif" }}>
+                      <span>{balance === 0 ? "TOTAL PAID" : "BALANCE DUE:"}</span>
+                      <span>₹{balance.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center gap-3 relative z-10 text-xs">
-                  <div className="text-center sm:text-left">
-                    <span className="block font-bold text-white tracking-wide">BROTHERS CENTERING & TRANSPORT</span>
-                    <span className="text-[11px] text-slate-400">Ashok Leyland Logistics & Building Materials</span>
-                  </div>
+                {/* Signature & Official JC Seal Section - Fixed Unified Layout */}
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: "24px", borderTop: "2px solid #e2e8f0", position: "relative" }}>
+  <div>
+    <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>Payment Method: Cash / Online Transfer</p>
+    <p style={{ fontSize: "11px", color: "#64748b", margin: "2px 0 0 0" }}>Thank you for your business!</p>
+  </div>
 
-                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-1.5 rounded-full">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-[11px] text-emerald-300 font-semibold tracking-wide">
-                      This is a computer-generated invoice. No signature is required.
-                    </span>
-                  </div>
-                </div>
+  <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
+    {/* Official JC Seal Image from public/seal.png */}
+    <div style={{ width: "110px", height: "110px", opacity: 0.92, transform: "rotate(-8deg)", flexShrink: 0 }}>
+      <img 
+        src="/seal.png" 
+        alt="JC Official Seal" 
+        style={{ width: "100%", height: "100%", objectFit: "contain", mixBlendMode: "multiply" }} 
+      />
+    </div>
+
+    {/* Brother's Signature with solid continuous line */}
+    <div style={{ textAlign: "center", width: "180px" }}>
+      <div style={{ height: "48px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2px" }}>
+        <img 
+          src="/signature.png" 
+          alt="Authorized Signature" 
+          style={{ maxHeight: "45px", maxWidth: "100%", objectFit: "contain", filter: "contrast(180%)" }}
+        />
+      </div>
+      <div style={{ width: "100%", borderTop: "1.5px solid #0f172a", paddingTop: "4px", fontWeight: "bold", fontSize: "11px", color: "#0f172a", textAlign: "center" }}>
+        Authorized Signatory
+      </div>
+    </div>
+  </div>
+</div>
+
               </div>
 
-              <div className="bg-[#0b1329] p-4 border-t border-slate-800 flex justify-end gap-3">
+              <div className="bg-[#0f172a] p-4 border-t border-slate-800 flex justify-end gap-3 flex-wrap">
                 <button
                   onClick={() => setBillReceiptOrder(null)}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-lg text-xs"
@@ -681,12 +705,12 @@ _Thank you for choosing Brothers Centering Yard._`;
                   Close
                 </button>
                 <button
-                  onClick={() => downloadPremiumPDF(billReceiptOrder)}
-                  disabled={pdfGenerating}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-black px-5 py-2.5 rounded-lg text-xs flex items-center gap-2 shadow-lg transition"
+                  onClick={() => downloadBillAsPhoto(billReceiptOrder)}
+                  disabled={photoGenerating}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-black px-4 py-2.5 rounded-lg text-xs flex items-center gap-2 shadow-lg transition"
                 >
-                  {pdfGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Download Locked PDF
+                  {photoGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                  Download Bill Photo (.png)
                 </button>
               </div>
 

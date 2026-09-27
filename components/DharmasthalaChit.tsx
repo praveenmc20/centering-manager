@@ -3,16 +3,18 @@
 import React, { useState } from "react";
 import { Clock, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "../app/lib/supabase";
-import { DharmasthalaChit } from "../types";
+import { DharmasthalaChit, CashSourceOption } from "../types";
+import MoneySourceSelector from "./MoneySourceSelector";
 
 interface DharmasthalaProps {
   chits: DharmasthalaChit[];
   currentUser: "ADMIN" | "PAVAN" | "JC";
+  availableSources: CashSourceOption[];
   onRefresh: () => Promise<void>;
   formatDate: (date: string) => string;
 }
 
-export default function DharmasthalaSection({ chits, currentUser, onRefresh, formatDate }: DharmasthalaProps) {
+export default function DharmasthalaSection({ chits, currentUser, availableSources, onRefresh, formatDate }: DharmasthalaProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [groupName, setGroupName] = useState("Dharmasthala Sangha");
   const [totalLoan, setTotalLoan] = useState("300000");
@@ -24,7 +26,7 @@ export default function DharmasthalaSection({ chits, currentUser, onRefresh, for
   const [payKanthModal, setPayKanthModal] = useState<DharmasthalaChit | null>(null);
   const [kanthAmount, setKanthAmount] = useState("");
   const [payDate, setPayDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paySource, setPaySource] = useState<any>("Centering");
+  const [paySource, setPaySource] = useState<string>(availableSources?.[0]?.id || "Centering Cash");
 
   const [loading, setLoading] = useState(false);
 
@@ -153,6 +155,7 @@ export default function DharmasthalaSection({ chits, currentUser, onRefresh, for
                   onClick={() => {
                     setPayKanthModal(c);
                     setKanthAmount(c.weekly_kanth_amount.toString());
+                    setPaySource(availableSources?.[0]?.id || "Centering Cash");
                   }}
                   className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs px-4 py-2 rounded-lg transition"
                 >
@@ -198,13 +201,13 @@ export default function DharmasthalaSection({ chits, currentUser, onRefresh, for
               </div>
               <div>
                 <label className="text-xs text-slate-400">Payment Source *</label>
-                <select value={paySource} onChange={e => setPaySource(e.target.value as any)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
-                  <option value="Centering">🏗️ Centering Cash</option>
-                  <option value="BMC Dairy">🥛 BMC Dairy Cash</option>
-                  <option value="Pavan Cash">🧑‍🌾 Pavan's Cash</option>
-                  <option value="JC Salary Cash">💼 JC Salary Cash</option>
-                  <option value="Personal Cash">💵 Outside Cash</option>
-                </select>
+                <div className="mt-1">
+                  <MoneySourceSelector
+                    value={paySource}
+                    onChange={setPaySource}
+                    sources={availableSources}
+                  />
+                </div>
               </div>
             </div>
 

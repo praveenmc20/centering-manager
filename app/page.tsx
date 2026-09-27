@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   Truck, Bell, LogOut, User, Loader2, 
-  Mic, CreditCard, Milk, BarChart3, HandCoins, Clock 
+  Mic, CreditCard, Milk, BarChart3, HandCoins, Clock, Globe 
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import { 
@@ -11,7 +11,7 @@ import {
   JCExpense, JCBorrowing, CreditCardProfile, CreditCardSpend, CreditCardRepayment,
   VehicleEMI, MargadarshiChit, JCSalaryRecord, DharmasthalaChit, CashSourceOption
 } from "../types";
-import { translations } from "./lib/translations";
+import { translations, Language } from "./lib/translations";
 
 import SitesKhata from "../components/SitesKhata";
 import NewDispatch from "../components/NewDispatch";
@@ -40,7 +40,8 @@ const calculateReturnDateString = (startDateStr: string, daysKept: number) => {
 
 export default function CenteringYardManager() {
   const [showSplash, setShowSplash] = useState(true);
-  const t = translations.en;
+  const [lang, setLang] = useState<Language>("en");
+  const t = translations[lang];
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 900);
@@ -302,28 +303,26 @@ export default function CenteringYardManager() {
     sources.push({ id: "Margadarshi Lifted Cash", label: "💰 Margadarshi Lifted Cash", availableBalance: liftedNet });
 
     [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
-      if (b.status === "PENDING") {
-        const loanTotal = Number(b.amount || 0);
-        let loanSpent = 0;
-        const loanSourceId = `Loan: ${b.person_name}`;
+      const loanTotal = Number(b.amount || 0);
+      let loanSpent = 0;
+      const loanSourceId = `Loan: ${b.person_name}`;
 
-        const isThisLoan = (src: string) => src && (src.includes(b.person_name || "") || src === loanSourceId);
-        pavanExpenses.forEach((pe) => { if (isThisLoan(pe.source)) loanSpent += Number(pe.amount); });
-        jcExpenses.forEach((je) => { if (isThisLoan(je.source)) loanSpent += Number(je.amount); });
-        pavanRepayments.forEach((pr) => { if (isThisLoan(pr.source)) loanSpent += Number(pr.amount); });
-        jcRepayments.forEach((jr) => { if (isThisLoan(jr.source)) loanSpent += Number(jr.amount); });
-        cardRepayments.forEach((cr) => { if (isThisLoan(cr.source)) loanSpent += Number(cr.amount); });
-        vehicleEmis.forEach((v) => (v.payments || []).forEach((vp) => { if (isThisLoan(vp.source)) loanSpent += Number(vp.amount); }));
-        margadarshiChits.forEach((m) => (m.payments || []).forEach((mp: any) => { if (isThisLoan(mp.source)) loanSpent += Number(mp.amount || 0); }));
-        dharmasthalaChits.forEach((d) => (d.payments || []).forEach((dp) => { if (isThisLoan(dp.source)) loanSpent += Number(dp.amount); }));
+      const isThisLoan = (src: string) => src && (src.includes(b.person_name || "") || src === loanSourceId);
+      pavanExpenses.forEach((pe) => { if (isThisLoan(pe.source)) loanSpent += Number(pe.amount); });
+      jcExpenses.forEach((je) => { if (isThisLoan(je.source)) loanSpent += Number(je.amount); });
+      pavanRepayments.forEach((pr) => { if (isThisLoan(pr.source)) loanSpent += Number(pr.amount); });
+      jcRepayments.forEach((jr) => { if (isThisLoan(jr.source)) loanSpent += Number(jr.amount); });
+      cardRepayments.forEach((cr) => { if (isThisLoan(cr.source)) loanSpent += Number(cr.amount); });
+      vehicleEmis.forEach((v) => (v.payments || []).forEach((vp) => { if (isThisLoan(vp.source)) loanSpent += Number(vp.amount); }));
+      margadarshiChits.forEach((m) => (m.payments || []).forEach((mp: any) => { if (isThisLoan(mp.source)) loanSpent += Number(mp.amount || 0); }));
+      dharmasthalaChits.forEach((d) => (d.payments || []).forEach((dp) => { if (isThisLoan(dp.source)) loanSpent += Number(dp.amount); }));
 
-        const loanRemaining = Math.max(0, Math.round(loanTotal - loanSpent));
-        sources.push({
-          id: loanSourceId,
-          label: `🤝 Loan from ${b.person_name}`,
-          availableBalance: loanRemaining
-        });
-      }
+      const loanRemaining = Math.max(0, Math.round(loanTotal - loanSpent));
+      sources.push({
+        id: loanSourceId,
+        label: `🤝 Loan from ${b.person_name}`,
+        availableBalance: loanRemaining
+      });
     });
 
     sources.push({ id: "Pavan Cash", label: "🧑‍🌾 Pavan's Hand Cash", availableBalance: 999999 });
@@ -451,7 +450,6 @@ export default function CenteringYardManager() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 font-sans">
-      {/* Header */}
       <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center pb-6 border-b border-slate-800 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-amber-500 flex items-center gap-2">
@@ -461,8 +459,15 @@ export default function CenteringYardManager() {
         </div>
         <div className="flex items-center gap-3">
           {loading && <Loader2 className="w-4 h-4 animate-spin text-amber-500" />}
+          <button
+            onClick={() => setLang(lang === "en" ? "kn" : "en")}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 px-3.5 py-1.5 rounded-full border border-amber-500/40 text-xs font-bold text-amber-400 transition shadow"
+          >
+            <Globe className="w-3.5 h-3.5 text-amber-400" />
+            {lang === "en" ? "🇮🇳 ಕನ್ನಡ" : "🇬🇧 English"}
+          </button>
           <span className="text-xs bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700 text-slate-200 font-semibold">
-            {currentUser === "ADMIN" ? "Admin (Full Control)" : currentUser === "PAVAN" ? "Pavan" : "JC (Appaji)"}
+            {currentUser === "ADMIN" ? "Admin" : currentUser === "PAVAN" ? "Pavan" : "JC"}
           </span>
           <button onClick={handleLogout} className="text-slate-400 hover:text-red-400 p-2" title="Logout">
             <LogOut className="w-4 h-4" />
@@ -470,7 +475,6 @@ export default function CenteringYardManager() {
         </div>
       </div>
 
-      {/* Persistent Combined Reminders */}
       {combinedAlerts.length > 0 && (
         <div className="max-w-6xl mx-auto mt-4 space-y-2">
           {combinedAlerts.map((alert, idx) => (
@@ -484,7 +488,6 @@ export default function CenteringYardManager() {
         </div>
       )}
 
-      {/* Navigation Tabs */}
       <div className="max-w-6xl mx-auto mt-4 flex flex-wrap gap-2">
         <button onClick={() => setActiveTab("ACTIVE")} className={`px-3 py-2 rounded text-xs font-semibold ${activeTab === "ACTIVE" ? "bg-amber-500 text-black font-bold" : "bg-slate-800 text-slate-300"}`}>
           {t.tabSites} ({orders.length})
@@ -523,7 +526,6 @@ export default function CenteringYardManager() {
         </button>
       </div>
 
-      {/* Main Content Sections */}
       <div className="max-w-6xl mx-auto mt-6">
         {activeTab === "ACTIVE" && (
           <SitesKhata
@@ -580,6 +582,7 @@ export default function CenteringYardManager() {
             spends={cardSpends}
             repayments={cardRepayments}
             currentUser={currentUser}
+            availableSources={dynamicSources}
             onRefresh={fetchData}
             formatDate={formatDateWithDay}
           />
@@ -618,6 +621,7 @@ export default function CenteringYardManager() {
           <DharmasthalaSection
             chits={dharmasthalaChits}
             currentUser={currentUser}
+            availableSources={dynamicSources}
             onRefresh={fetchData}
             formatDate={formatDateWithDay}
           />
@@ -629,8 +633,10 @@ export default function CenteringYardManager() {
             dairyRecords={dairyRecords}
             pavanExpenses={pavanExpenses}
             pavanRepayments={pavanRepayments}
+            pavanBorrowings={pavanBorrowings}
             jcExpenses={jcExpenses}
             jcRepayments={jcRepayments}
+            jcBorrowings={jcBorrowings}
             vehicleEmis={vehicleEmis}
             margadarshiChits={margadarshiChits}
             salaryRecords={salaryRecords}

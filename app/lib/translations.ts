@@ -1,4 +1,4 @@
-export type Language = "en";
+export type Language = "en" | "kn";
 
 export const translations = {
   en: {
@@ -15,5 +15,32 @@ export const translations = {
     tabJcSalary: "JC Salary",
     tabDharmasthala: "Dharmasthala",
     tabAnalytics: "Financial Growth Graph",
+    expenseTitle: "Record Expense & Description",
+    amountLabel: "Amount (₹)",
+    sourceLabel: "Money Source",
+    dateLabel: "Date",
+    descLabel: "Expense Description / Note (e.g. Diesel, Cement)",
+    saveExpense: "Save Expense Entry",
+  },
+  kn: {
+    appTitle: "ಬ್ರದರ್ಸ್ ಸೆಂಟ್ರಿಂಗ್ & ಟ್ರಾನ್ಸ್‌ಪೋರ್ಟ್",
+    appSubtitle: "ಅಶೋಕ್ ಲೇಲ್ಯಾಂಡ್ ಲಾರಿ ಬಾಡಿಗೆ ಮತ್ತು ಬಿಎಂಸಿ ಡೈರಿ",
+    tabSites: "ಸೈಟ್‌ಗಳು & ಖಾತೆ",
+    tabNewDispatch: "+ ಹೊಸ ಬಾಡಿಗೆ ಕಳುಹಿಸಿ",
+    tabDairy: "ಬಿಎಂಸಿ ಡೈರಿ",
+    tabPavanLedger: "ಪವನ್ ಲೆಡ್ಜರ್",
+    tabJcLedger: "ಜೆಸಿ ಲೆಡ್ಜರ್",
+    tabCreditCards: "ಕ್ರೆಡಿಟ್ ಕಾರ್ಡ್‌ಗಳು",
+    tabVehicleEmis: "ವಾಹನಗಳ ಇಎಂಐ (EMI)",
+    tabMargadarshi: "ಮಾರ್ಗದರ್ಶಿ ಚೀಟಿ",
+    tabJcSalary: "ಜೆಸಿ ಸಂಬಳ",
+    tabDharmasthala: "ಧರ್ಮಸ್ಥಳ ಸಂಘ",
+    tabAnalytics: "ಹಣಕಾಸು ನಕ್ಷೆ (Graph)",
+    expenseTitle: "ಖರ್ಚು ವಿವರ ಮತ್ತು ಮೊತ್ತ ದಾಖಲಿಸಿ",
+    amountLabel: "ಮೊತ್ತ (₹)",
+    sourceLabel: "ಹಣದ ಮೂಲ",
+    dateLabel: "ದಿನಾಂಕ",
+    descLabel: "ಖರ್ಚಿನ ವಿವರ (ಉದಾ: ಡೀಸೆಲ್, ಸಿಮೆಂಟ್, ಕೂಲಿ)",
+    saveExpense: "ಖರ್ಚು ಸೇーブ ಮಾಡಿ",
   }
 };

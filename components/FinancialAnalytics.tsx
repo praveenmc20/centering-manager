@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { 
   Order, DairyRecord, PavanExpense, BorrowingRepayment, 
-  JCExpense, VehicleEMI, MargadarshiChit, JCSalaryRecord, DharmasthalaChit 
+  JCExpense, VehicleEMI, MargadarshiChit, JCSalaryRecord, DharmasthalaChit, PavanBorrowing, JCBorrowing 
 } from "../types";
 
 interface FinancialAnalyticsProps {
@@ -19,8 +19,10 @@ interface FinancialAnalyticsProps {
   dairyRecords: DairyRecord[];
   pavanExpenses: PavanExpense[];
   pavanRepayments: BorrowingRepayment[];
+  pavanBorrowings?: PavanBorrowing[];
   jcExpenses: JCExpense[];
   jcRepayments: BorrowingRepayment[];
+  jcBorrowings?: JCBorrowing[];
   vehicleEmis: VehicleEMI[];
   margadarshiChits: MargadarshiChit[];
   salaryRecords: JCSalaryRecord[];
@@ -38,8 +40,10 @@ export default function FinancialAnalytics({
   dairyRecords,
   pavanExpenses,
   pavanRepayments,
+  pavanBorrowings = [],
   jcExpenses,
   jcRepayments,
+  jcBorrowings = [],
   vehicleEmis,
   margadarshiChits,
   salaryRecords,
@@ -49,7 +53,7 @@ export default function FinancialAnalytics({
   const [filterMode, setFilterMode] = useState<"MONTHLY" | "YEARLY" | "ALL_TIME">("MONTHLY");
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [selectedMonth, setSelectedMonth] = useState<string>("ALL");
-  const [streamModalType, setStreamModalType] = useState<"CENTERING" | "TRANSPORT" | "DAIRY" | "SALARY" | "LIFTED" | "OUTFLOWS" | null>(null);
+  const [streamModalType, setStreamModalType] = useState<"CENTERING" | "TRANSPORT" | "DAIRY" | "SALARY" | "LIFTED" | "BORROWINGS" | "OUTFLOWS" | null>(null);
   const [showUncollectedModal, setShowUncollectedModal] = useState(false);
 
   const getAvailableYears = () => {
@@ -61,11 +65,13 @@ export default function FinancialAnalytics({
     pavanExpenses.forEach((p) => p.expense_date && yearSet.add(p.expense_date.slice(0, 4)));
     jcExpenses.forEach((j) => j.expense_date && yearSet.add(j.expense_date.slice(0, 4)));
     salaryRecords.forEach((s) => s.credited_date && yearSet.add(s.credited_date.slice(0, 4)));
+    pavanBorrowings.forEach((b) => b.borrowed_date && yearSet.add(b.borrowed_date.slice(0, 4)));
+    jcBorrowings.forEach((b) => b.borrowed_date && yearSet.add(b.borrowed_date.slice(0, 4)));
     return Array.from(yearSet).sort((a, b) => b.localeCompare(a));
   };
 
   const matchesScope = (dateStr: string) => {
-    if (!dateStr) return false;
+    if (!dateStr) return true;
     if (filterMode === "ALL_TIME") return true;
     if (filterMode === "YEARLY") return true;
     if (filterMode === "MONTHLY") {
@@ -93,7 +99,6 @@ export default function FinancialAnalytics({
     return { boxesEarned, transportEarned, debt, totalBill, paid };
   };
 
-  // Compile full detailed outflow logs for tracing
   interface OutflowLogItem {
     id: string;
     person: "Pavan" | "JC";
@@ -110,7 +115,7 @@ export default function FinancialAnalytics({
       allOutflowItems.push({
         id: `pe-${e.id}`,
         person: "Pavan",
-        title: "Direct Expense / Spend",
+        title: e.note || "Direct Expense / Spend",
         amount: Number(e.amount || 0),
         source: e.source,
         date: e.expense_date
@@ -123,7 +128,7 @@ export default function FinancialAnalytics({
       allOutflowItems.push({
         id: `je-${e.id}`,
         person: "JC",
-        title: "Direct Expense / Spend",
+        title: e.note || "Direct Expense / Spend",
         amount: Number(e.amount || 0),
         source: e.source,
         date: e.expense_date
@@ -202,13 +207,13 @@ export default function FinancialAnalytics({
     });
   });
 
-  // Calculate stream-specific totals
   const calculateTotals = () => {
     let boxesGross = 0;
     let transportGross = 0;
     let dairyGross = 0;
     let salaryGross = 0;
     let liftedGross = 0;
+    let borrowingsGross = 0;
     let totalDebt = 0;
 
     orders.forEach((o) => {
@@ -234,15 +239,22 @@ export default function FinancialAnalytics({
       }
     });
 
+    // Sum all borrowings safely so they always reflect the total
+    [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
+      borrowingsGross += Number(b.amount || 0);
+    });
+
     const isCentering = (src: string) => src && (src.includes("Centering") || src === "Centering Cash");
     const isDairy = (src: string) => src && (src.includes("Dairy") || src === "BMC Dairy Cash");
     const isSalary = (src: string) => src && (src.includes("Salary") || src === "JC Salary Cash");
     const isLifted = (src: string) => src && (src.includes("Lifted") || src === "Margadarshi Lifted Cash");
+    const isBorrowing = (src: string) => src && src.includes("Loan:");
 
     let centeringSpent = 0;
     let dairySpent = 0;
     let salarySpent = 0;
     let liftedSpent = 0;
+    let borrowingsSpent = 0;
     let totalOutflows = 0;
 
     allOutflowItems.forEach((item) => {
@@ -251,6 +263,7 @@ export default function FinancialAnalytics({
       else if (isDairy(item.source)) dairySpent += item.amount;
       else if (isSalary(item.source)) salarySpent += item.amount;
       else if (isLifted(item.source)) liftedSpent += item.amount;
+      else if (isBorrowing(item.source)) borrowingsSpent += item.amount;
     });
 
     const centeringInflow = Math.round(boxesGross + transportGross);
@@ -258,8 +271,9 @@ export default function FinancialAnalytics({
     const dairyRemaining = Math.round(dairyGross - dairySpent);
     const salaryRemaining = Math.round(salaryGross - salarySpent);
     const liftedRemaining = Math.round(liftedGross - liftedSpent);
+    const borrowingsRemaining = Math.round(borrowingsGross - borrowingsSpent);
 
-    const totalInflow = Math.round(boxesGross + transportGross + dairyGross + salaryGross + liftedGross);
+    const totalInflow = Math.round(boxesGross + transportGross + dairyGross + salaryGross + liftedGross + borrowingsGross);
     const netCashInHand = totalInflow - Math.round(totalOutflows);
 
     return {
@@ -281,6 +295,10 @@ export default function FinancialAnalytics({
       liftedSpent: Math.round(liftedSpent),
       liftedRemaining,
 
+      borrowingsGross: Math.round(borrowingsGross),
+      borrowingsSpent: Math.round(borrowingsSpent),
+      borrowingsRemaining,
+
       totalDebt: Math.round(totalDebt),
       totalInflow,
       totalOutflow: Math.round(totalOutflows),
@@ -290,10 +308,21 @@ export default function FinancialAnalytics({
 
   const totals = calculateTotals();
 
-  // Drilldown Filter for Modal
   const getModalLogs = () => {
     if (!streamModalType) return [];
     if (streamModalType === "OUTFLOWS") return allOutflowItems;
+    
+    if (streamModalType === "BORROWINGS") {
+      return [...pavanBorrowings, ...jcBorrowings]
+        .map(b => ({
+          id: `borrow-${b.id}`,
+          person: b.created_by || "Pavan/JC",
+          title: `Loan from ${b.person_name} (${b.loan_type})`,
+          amount: Number(b.amount || 0),
+          source: `Loan: ${b.person_name}`,
+          date: b.borrowed_date
+        }));
+    }
 
     return allOutflowItems.filter((item) => {
       if (streamModalType === "CENTERING" || streamModalType === "TRANSPORT") {
@@ -321,7 +350,6 @@ export default function FinancialAnalytics({
     })
     .filter((o) => o.debt > 0);
 
-  // Generate Recharts Bars
   const generateChartData = () => {
     if (filterMode === "MONTHLY") {
       if (selectedMonth === "ALL") {
@@ -333,6 +361,7 @@ export default function FinancialAnalytics({
           let transport = 0;
           let dairy = 0;
           let salary = 0;
+          let borrowings = 0;
           let outflows = 0;
           let pendingDebt = 0;
 
@@ -353,6 +382,10 @@ export default function FinancialAnalytics({
             if (s.credited_date && s.credited_date.startsWith(prefix)) salary += Number(s.net_credited || 0);
           });
 
+          [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
+            if (b.borrowed_date && b.borrowed_date.startsWith(prefix)) borrowings += Number(b.amount || 0);
+          });
+
           allOutflowItems.forEach((it) => {
             if (it.date && it.date.startsWith(prefix)) outflows += it.amount;
           });
@@ -363,9 +396,10 @@ export default function FinancialAnalytics({
             transport: Math.round(transport),
             dairy: Math.round(dairy),
             salary: Math.round(salary),
+            borrowings: Math.round(borrowings),
             outflows: Math.round(outflows),
             pendingDebt: Math.round(pendingDebt),
-            netProfit: Math.round(centering + transport + dairy + salary - outflows)
+            netProfit: Math.round(centering + transport + dairy + salary + borrowings - outflows)
           };
         });
       } else {
@@ -377,6 +411,7 @@ export default function FinancialAnalytics({
         let transport = 0;
         let dairy = 0;
         let salary = 0;
+        let borrowings = 0;
         let outflows = 0;
         let pendingDebt = 0;
 
@@ -397,6 +432,10 @@ export default function FinancialAnalytics({
           if (s.credited_date && s.credited_date.startsWith(prefix)) salary += Number(s.net_credited || 0);
         });
 
+        [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
+          if (b.borrowed_date && b.borrowed_date.startsWith(prefix)) borrowings += Number(b.amount || 0);
+        });
+
         allOutflowItems.forEach((it) => {
           if (it.date && it.date.startsWith(prefix)) outflows += it.amount;
         });
@@ -407,9 +446,10 @@ export default function FinancialAnalytics({
           transport: Math.round(transport),
           dairy: Math.round(dairy),
           salary: Math.round(salary),
+          borrowings: Math.round(borrowings),
           outflows: Math.round(outflows),
           pendingDebt: Math.round(pendingDebt),
-          netProfit: Math.round(centering + transport + dairy + salary - outflows)
+          netProfit: Math.round(centering + transport + dairy + salary + borrowings - outflows)
         }];
       }
     }
@@ -420,6 +460,7 @@ export default function FinancialAnalytics({
       let transport = 0;
       let dairy = 0;
       let salary = 0;
+      let borrowings = 0;
       let outflows = 0;
       let pendingDebt = 0;
 
@@ -440,6 +481,10 @@ export default function FinancialAnalytics({
         if (s.credited_date && s.credited_date.startsWith(yr)) salary += Number(s.net_credited || 0);
       });
 
+      [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
+        if (b.borrowed_date && b.borrowed_date.startsWith(yr)) borrowings += Number(b.amount || 0);
+      });
+
       allOutflowItems.forEach((it) => {
         if (it.date && it.date.startsWith(yr)) outflows += it.amount;
       });
@@ -450,9 +495,10 @@ export default function FinancialAnalytics({
         transport: Math.round(transport),
         dairy: Math.round(dairy),
         salary: Math.round(salary),
+        borrowings: Math.round(borrowings),
         outflows: Math.round(outflows),
         pendingDebt: Math.round(pendingDebt),
-        netProfit: Math.round(centering + transport + dairy + salary - outflows)
+        netProfit: Math.round(centering + transport + dairy + salary + borrowings - outflows)
       };
     });
   };
@@ -570,9 +616,8 @@ export default function FinancialAnalytics({
           </div>
         </div>
 
-        {/* 6 SECTION AUDIT CARDS WITH DETAILED MODALS ON CLICK */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* Card 1: Centering Boxes */}
+        {/* 7 SECTION AUDIT CARDS */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           <div 
             onClick={() => setStreamModalType("CENTERING")}
             className="bg-slate-950/80 p-3 rounded-xl border border-amber-500/40 hover:border-amber-400 transition cursor-pointer group"
@@ -585,7 +630,6 @@ export default function FinancialAnalytics({
             <span className="text-[10px] text-slate-400 block">Remaining: <strong className="text-emerald-400">₹{totals.centeringRemaining.toLocaleString("en-IN")}</strong></span>
           </div>
 
-          {/* Card 2: Ashok Leyland */}
           <div 
             onClick={() => setStreamModalType("TRANSPORT")}
             className="bg-slate-950/80 p-3 rounded-xl border border-blue-500/40 hover:border-blue-400 transition cursor-pointer group"
@@ -598,7 +642,6 @@ export default function FinancialAnalytics({
             <span className="text-[10px] text-slate-400 block">Trip delivery fees</span>
           </div>
 
-          {/* Card 3: BMC Dairy */}
           <div 
             onClick={() => setStreamModalType("DAIRY")}
             className="bg-slate-950/80 p-3 rounded-xl border border-emerald-500/40 hover:border-emerald-400 transition cursor-pointer group"
@@ -611,7 +654,6 @@ export default function FinancialAnalytics({
             <span className="text-[10px] text-slate-400 block">Remaining: <strong className="text-emerald-400">₹{totals.dairyRemaining.toLocaleString("en-IN")}</strong></span>
           </div>
 
-          {/* Card 4: JC Salary */}
           <div 
             onClick={() => setStreamModalType("SALARY")}
             className="bg-slate-950/80 p-3 rounded-xl border border-indigo-500/40 hover:border-indigo-400 transition cursor-pointer group"
@@ -624,7 +666,6 @@ export default function FinancialAnalytics({
             <span className="text-[10px] text-slate-400 block">Remaining: <strong className="text-emerald-400">₹{totals.salaryRemaining.toLocaleString("en-IN")}</strong></span>
           </div>
 
-          {/* Card 5: Margadarshi Lifted */}
           <div 
             onClick={() => setStreamModalType("LIFTED")}
             className="bg-slate-950/80 p-3 rounded-xl border border-teal-500/40 hover:border-teal-400 transition cursor-pointer group"
@@ -637,13 +678,24 @@ export default function FinancialAnalytics({
             <span className="text-[10px] text-slate-400 block">Remaining: <strong className="text-emerald-400">₹{totals.liftedRemaining.toLocaleString("en-IN")}</strong></span>
           </div>
 
-          {/* Card 6: Total Outflows */}
+          <div 
+            onClick={() => setStreamModalType("BORROWINGS")}
+            className="bg-slate-950/80 p-3 rounded-xl border border-cyan-500/40 hover:border-cyan-400 transition cursor-pointer group"
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] uppercase text-cyan-400 font-bold">6. Borrowings</span>
+              <span className="text-[10px] text-slate-500 group-hover:text-cyan-400">Details →</span>
+            </div>
+            <h4 className="text-lg font-black text-white mt-1">₹{totals.borrowingsGross.toLocaleString("en-IN")}</h4>
+            <span className="text-[10px] text-slate-400 block">Remaining: <strong className="text-emerald-400">₹{totals.borrowingsRemaining.toLocaleString("en-IN")}</strong></span>
+          </div>
+
           <div 
             onClick={() => setStreamModalType("OUTFLOWS")}
             className="bg-slate-950/80 p-3 rounded-xl border border-purple-500/40 hover:border-purple-400 transition cursor-pointer group"
           >
             <div className="flex justify-between items-center">
-              <span className="text-[10px] uppercase text-purple-400 font-bold">6. Outflows</span>
+              <span className="text-[10px] uppercase text-purple-400 font-bold">7. Outflows</span>
               <span className="text-[10px] text-slate-500 group-hover:text-purple-400">Details →</span>
             </div>
             <h4 className="text-lg font-black text-red-400 mt-1">₹{totals.totalOutflow.toLocaleString("en-IN")}</h4>
@@ -677,6 +729,7 @@ export default function FinancialAnalytics({
               <Bar dataKey="transport" name="Ashok Leyland (₹)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               <Bar dataKey="dairy" name="BMC Milk Dairy (₹)" fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="salary" name="JC Salary (₹)" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="borrowings" name="Borrowings (₹)" fill="#06b6d4" radius={[4, 4, 0, 0]} />
               <Bar dataKey="outflows" name="Total Outflows (₹)" fill="#ef4444" radius={[4, 4, 0, 0]} />
               <Bar dataKey="pendingDebt" name="Pending Balance Due (₹)" fill="#a855f7" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -702,6 +755,7 @@ export default function FinancialAnalytics({
                 <th className="p-3 text-right">Transport</th>
                 <th className="p-3 text-right">Dairy</th>
                 <th className="p-3 text-right">JC Salary</th>
+                <th className="p-3 text-right">Borrowings</th>
                 <th className="p-3 text-right text-red-400">Outflows</th>
                 <th className="p-3 text-right text-emerald-400">Net Profit</th>
                 <th className="p-3 text-right text-purple-400">Market Due</th>
@@ -715,6 +769,7 @@ export default function FinancialAnalytics({
                   <td className="p-3 text-right text-blue-400">₹{row.transport.toLocaleString("en-IN")}</td>
                   <td className="p-3 text-right text-emerald-400">₹{row.dairy.toLocaleString("en-IN")}</td>
                   <td className="p-3 text-right text-indigo-400">₹{row.salary.toLocaleString("en-IN")}</td>
+                  <td className="p-3 text-right text-cyan-400">₹{row.borrowings.toLocaleString("en-IN")}</td>
                   <td className="p-3 text-right text-red-400 font-bold">-₹{row.outflows.toLocaleString("en-IN")}</td>
                   <td className={`p-3 text-right font-black ${row.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                     ₹{row.netProfit.toLocaleString("en-IN")}
@@ -727,7 +782,7 @@ export default function FinancialAnalytics({
         </div>
       </div>
 
-      {/* 5. AUDIT DETAILS DRILLDOWN MODAL (EXACT LOG TRACING) */}
+      {/* 5. AUDIT DETAILS DRILLDOWN MODAL */}
       {streamModalType && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-slate-900 border-2 border-slate-700 max-w-2xl w-full p-6 rounded-2xl space-y-4 shadow-2xl relative max-h-[85vh] flex flex-col">
@@ -747,23 +802,24 @@ export default function FinancialAnalytics({
                 {streamModalType === "DAIRY" && "🥛 BMC Milk Dairy Stream Audit"}
                 {streamModalType === "SALARY" && "💼 JC Salary Inflow & Spend Audit"}
                 {streamModalType === "LIFTED" && "💰 Margadarshi Lifted Chit Cash Audit"}
+                {streamModalType === "BORROWINGS" && "🤝 Borrowings / Loans Cash Audit"}
                 {streamModalType === "OUTFLOWS" && "📉 All Business Outflows (Where money went)"}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Full breakdown showing total earned, where each rupee went, who spent it, and remaining cash.
+                Full breakdown showing total earned or borrowed, where each rupee went, and remaining cash.
               </p>
             </div>
 
-            {/* Inflow vs Outflow vs Remaining Card */}
             <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 grid grid-cols-3 gap-2 text-xs">
               <div>
-                <span className="text-slate-400 block text-[10px] uppercase">Total Inflow:</span>
+                <span className="text-slate-400 block text-[10px] uppercase">Total Inflow / Raised:</span>
                 <strong className="text-white text-sm">
                   ₹{streamModalType === "CENTERING" ? totals.boxesGross.toLocaleString("en-IN")
                     : streamModalType === "TRANSPORT" ? totals.transportGross.toLocaleString("en-IN")
                     : streamModalType === "DAIRY" ? totals.dairyGross.toLocaleString("en-IN")
                     : streamModalType === "SALARY" ? totals.salaryGross.toLocaleString("en-IN")
                     : streamModalType === "LIFTED" ? totals.liftedGross.toLocaleString("en-IN")
+                    : streamModalType === "BORROWINGS" ? totals.borrowingsGross.toLocaleString("en-IN")
                     : totals.totalInflow.toLocaleString("en-IN")}
                 </strong>
               </div>
@@ -775,6 +831,7 @@ export default function FinancialAnalytics({
                     : streamModalType === "DAIRY" ? totals.dairySpent.toLocaleString("en-IN")
                     : streamModalType === "SALARY" ? totals.salarySpent.toLocaleString("en-IN")
                     : streamModalType === "LIFTED" ? totals.liftedSpent.toLocaleString("en-IN")
+                    : streamModalType === "BORROWINGS" ? totals.borrowingsSpent.toLocaleString("en-IN")
                     : totals.totalOutflow.toLocaleString("en-IN")}
                 </strong>
               </div>
@@ -786,19 +843,19 @@ export default function FinancialAnalytics({
                     : streamModalType === "DAIRY" ? totals.dairyRemaining.toLocaleString("en-IN")
                     : streamModalType === "SALARY" ? totals.salaryRemaining.toLocaleString("en-IN")
                     : streamModalType === "LIFTED" ? totals.liftedRemaining.toLocaleString("en-IN")
+                    : streamModalType === "BORROWINGS" ? totals.borrowingsRemaining.toLocaleString("en-IN")
                     : totals.netCashInHand.toLocaleString("en-IN")}
                 </strong>
               </div>
             </div>
 
-            {/* Detailed Itemized Outflow Logs */}
             <div className="overflow-y-auto flex-1 space-y-2 pr-1 text-xs">
               <span className="font-bold text-slate-300 block text-[11px] uppercase tracking-wider">
-                Where Did This Money Go? (ಹಣ ಎಲ್ಲಿ ಖರ್ಚಾಯ್ತು / ಯಾರಿಂದ ಹೋಯ್ತು):
+                Itemized Transactions:
               </span>
 
               {modalLogs.length === 0 ? (
-                <p className="text-center text-slate-500 py-6 italic">No outflow spends logged from this source in the selected period.</p>
+                <p className="text-center text-slate-500 py-6 italic">No transactions logged in this stream for the selected period.</p>
               ) : (
                 modalLogs.map((item) => (
                   <div key={item.id} className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
@@ -806,14 +863,16 @@ export default function FinancialAnalytics({
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white text-sm">{item.title}</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${item.person === "Pavan" ? "bg-purple-500/20 text-purple-300" : "bg-indigo-500/20 text-indigo-300"}`}>
-                          Spent by: {item.person}
+                          {item.person}
                         </span>
                       </div>
-                      <span className="text-[11px] text-slate-400 block mt-0.5">Fund Source: {item.source}</span>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">Source: {item.source}</span>
                     </div>
 
                     <div className="text-right">
-                      <span className="font-extrabold text-red-400 text-sm block">-₹{item.amount.toLocaleString("en-IN")}</span>
+                      <span className={`font-extrabold text-sm block ${streamModalType === "BORROWINGS" ? "text-cyan-400" : "text-red-400"}`}>
+                        {streamModalType === "BORROWINGS" ? "+" : "-"}₹{item.amount.toLocaleString("en-IN")}
+                      </span>
                       <span className="text-[10px] text-slate-500">{formatDate(item.date)}</span>
                     </div>
                   </div>

@@ -3,13 +3,15 @@
 import React, { useState } from "react";
 import { CreditCard, Plus, History, Trash2, X } from "lucide-react";
 import { supabase } from "../app/lib/supabase";
-import { CreditCardProfile, CreditCardSpend, CreditCardRepayment } from "../types";
+import { CreditCardProfile, CreditCardSpend, CreditCardRepayment, CashSourceOption } from "../types";
+import MoneySourceSelector from "./MoneySourceSelector";
 
 interface CreditCardsProps {
   cards: CreditCardProfile[];
   spends: CreditCardSpend[];
   repayments: CreditCardRepayment[];
   currentUser: "ADMIN" | "PAVAN" | "JC";
+  availableSources: CashSourceOption[];
   onRefresh: () => Promise<void>;
   formatDate: (date: string) => string;
 }
@@ -19,6 +21,7 @@ export default function CreditCards({
   spends,
   repayments,
   currentUser,
+  availableSources,
   onRefresh,
   formatDate
 }: CreditCardsProps) {
@@ -43,7 +46,7 @@ export default function CreditCards({
   const [showPayModal, setShowPayModal] = useState<CreditCardProfile | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payDate, setPayDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paySource, setPaySource] = useState<"Centering" | "BMC Dairy" | "Pavan Cash" | "Personal Cash">("Centering");
+  const [paySource, setPaySource] = useState<string>(availableSources?.[0]?.id || "Centering Cash");
 
   const [loading, setLoading] = useState(false);
 
@@ -222,6 +225,7 @@ export default function CreditCards({
                   onClick={() => {
                     setShowPayModal(card);
                     setPayAmount(outstanding.toString());
+                    setPaySource(availableSources?.[0]?.id || "Centering Cash");
                   }}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-xs font-bold transition"
                 >
@@ -483,16 +487,13 @@ export default function CreditCards({
               </div>
               <div>
                 <label className="text-xs text-slate-400">Payment Source *</label>
-                <select
-                  value={paySource}
-                  onChange={e => setPaySource(e.target.value as any)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1"
-                >
-                  <option value="Centering">🏗️ Centering Cash</option>
-                  <option value="BMC Dairy">🥛 BMC Dairy Cash</option>
-                  <option value="Pavan Cash">🧑‍🌾 Pavan's Cash</option>
-                  <option value="Personal Cash">💼 Personal Cash</option>
-                </select>
+                <div className="mt-1">
+                  <MoneySourceSelector
+                    value={paySource}
+                    onChange={setPaySource}
+                    sources={availableSources}
+                  />
+                </div>
               </div>
             </div>
 

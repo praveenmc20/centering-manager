@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { ArrowDownRight, HandCoins, Calendar, Trash2, Mic, Square, X, Eye, Bell, Check, Loader2 } from "lucide-react";
+import { ArrowDownRight, HandCoins, Calendar, Trash2, Mic, Square, X, Eye, Bell, Check, Loader2, FileText, CheckCircle2 } from "lucide-react";
 import { supabase } from "../app/lib/supabase";
 import { PavanExpense, PavanBorrowing, CashSourceOption } from "../types";
 import MoneySourceSelector from "./MoneySourceSelector";
@@ -27,6 +27,7 @@ export default function PavanLedger({
 
   // Expense form state
   const [expAmount, setExpAmount] = useState("");
+  const [expDescription, setExpDescription] = useState(""); // Typed note/description
   const [expSource, setExpSource] = useState<string>("Centering Cash");
   const [expDate, setExpDate] = useState(new Date().toISOString().split("T")[0]);
   const [expAudioBlob, setExpAudioBlob] = useState<Blob | null>(null);
@@ -119,8 +120,12 @@ export default function PavanLedger({
     try {
       let finalAudioUrl = null;
       if (expAudioBlob) finalAudioUrl = await uploadAudio(expAudioBlob, "expense");
+      
+      const finalNote = expDescription.trim() || "General Expense";
+
       const { error } = await supabase.from("pavan_expenditures").insert({
         amount: Number(expAmount),
+        note: finalNote,
         source: expSource,
         expense_date: expDate,
         audio_url: finalAudioUrl,
@@ -128,6 +133,7 @@ export default function PavanLedger({
       });
       if (error) throw error;
       setExpAmount("");
+      setExpDescription("");
       setExpAudioBlob(null);
       setExpAudioUrl(null);
       await onRefresh();
@@ -280,7 +286,7 @@ export default function PavanLedger({
           {(currentUser === "PAVAN" || currentUser === "ADMIN") && (
             <form onSubmit={handleSaveExpense} className="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4 shadow-xl">
               <h3 className="text-base font-bold text-purple-400 flex items-center gap-2">
-                <ArrowDownRight className="w-5 h-5 text-red-400" /> Record Pavan's Expense & Voice Note
+                <ArrowDownRight className="w-5 h-5 text-red-400" /> Record Pavan's Expense & Description
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -304,23 +310,40 @@ export default function PavanLedger({
                     />
                   </div>
                 </div>
+                {/* Native Date Picker Box */}
                 <div>
                   <label className="text-xs text-slate-400">Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={expDate}
-                    onChange={(e) => setExpDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-white mt-1"
-                  />
+                  <div className="relative mt-1">
+                    <input
+                      type="date"
+                      required
+                      value={expDate}
+                      onChange={(e) => setExpDate(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white cursor-pointer focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
                 </div>
+              </div>
+
+              {/* Typed Description Field */}
+              <div>
+                <label className="text-xs text-amber-400 font-semibold flex items-center gap-1">
+                  <FileText className="w-3.5 h-3.5" /> Expense Description / Note (Type what it's for)
+                </label>
+                <input
+                  type="text"
+                  value={expDescription}
+                  onChange={(e) => setExpDescription(e.target.value)}
+                  placeholder="e.g. Diesel for Ashok Leyland, Cement bags, Labour payment"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm mt-1 text-white"
+                />
               </div>
 
               {/* Voice Recorder */}
               <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-slate-300 flex items-center gap-2">
-                    <Mic className="w-4 h-4 text-amber-400" /> Voice Note (ಎಲ್ಲಿ ಖರ್ಚಾಯ್ತು ಧ್ವನಿ ರೆಕಾರ್ಡ್ ಮಾಡಿ):
+                    <Mic className="w-4 h-4 text-amber-400" /> Optional Voice Note (ಎಲ್ಲಿ ಖರ್ಚಾಯ್ತು ಧ್ವನಿ ರೆಕಾರ್ಡ್ ಮಾಡಿ):
                   </label>
                   {isRecording && recordingTarget === "EXPENSE" && (
                     <span className="text-xs font-bold text-red-400 animate-pulse flex items-center gap-1.5">
@@ -375,15 +398,16 @@ export default function PavanLedger({
 
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 space-y-2">
             <h4 className="font-bold text-slate-200 text-sm">Recorded Pavan Expenditures</h4>
-            {expenses.map((exp) => (
+            {expenses.map((exp: any) => (
               <div key={exp.id} className="bg-slate-900/80 p-3 rounded-lg border border-slate-800 flex justify-between items-center text-xs">
                 <div>
                   <span className="font-bold text-white text-sm">₹{Number(exp.amount).toLocaleString("en-IN")}</span>
                   <span className="text-slate-400 ml-2">via {exp.source}</span>
+                  <p className="text-amber-300 font-medium mt-0.5">{exp.note || "General Expense"}</p>
                   <span className="text-slate-500 text-[11px] block">{formatDate(exp.expense_date)}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  {exp.audio_url ? <audio src={exp.audio_url} controls className="h-7 w-44" /> : <span className="text-[10px] text-slate-500 italic">No audio</span>}
+                  {exp.audio_url ? <audio src={exp.audio_url} controls className="h-7 w-44" /> : null}
                   {currentUser === "ADMIN" && (
                     <button onClick={() => handleDeleteExpense(exp.id)} className="text-red-400 hover:text-red-300 p-1">
                       <Trash2 className="w-4 h-4" />
@@ -452,7 +476,7 @@ export default function PavanLedger({
                     required
                     value={borrowDate}
                     onChange={(e) => setBorrowDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-white mt-1"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-white mt-1 cursor-pointer"
                   />
                 </div>
 
@@ -542,7 +566,7 @@ export default function PavanLedger({
 
                     {borrowAudioUrl && !isRecording && (
                       <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
-                        <audio src={borrowAudioUrl} controls className="h-7 w-52" />
+                        <audio src={borrowAudioUrl} controls className="h-6 w-48" />
                         <button
                           type="button"
                           onClick={() => { setBorrowAudioBlob(null); setBorrowAudioUrl(null); }}
@@ -611,12 +635,16 @@ export default function PavanLedger({
                     </div>
                   </div>
 
-                  {b.audio_url && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-purple-400 text-[11px]">🎙️ Reason:</span>
-                      <audio src={b.audio_url} controls className="h-6 w-48" />
-                    </div>
-                  )}
+                  {b.reason_type === "TYPE" && b.reason_text ? (
+  <div className="flex items-center gap-1.5 mt-1 text-slate-300">
+    <span className="text-purple-400 font-bold">✍️ Reason:</span> <span>{b.reason_text}</span>
+  </div>
+) : b.audio_url ? (
+  <div className="flex items-center gap-2 mt-1">
+    <span className="text-purple-400 text-[11px]">🎙️ Reason:</span>
+    <audio src={b.audio_url} controls className="h-6 w-48" />
+  </div>
+) : null}
                 </div>
               );
             })}
@@ -624,7 +652,7 @@ export default function PavanLedger({
         </div>
       )}
 
-      {/* WORKING REPAYMENT MODAL WITH DYNAMIC MONEY SOURCES */}
+      {/* WORKING REPAYMENT MODAL */}
       {repayModalBorrowing && (() => {
         const remaining = getRemaining(repayModalBorrowing);
 
@@ -681,7 +709,7 @@ export default function PavanLedger({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-slate-400">Repayment Date</label>
-                    <input type="date" required value={repayDate} onChange={(e) => setRepayDate(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-white mt-1" />
+                    <input type="date" required value={repayDate} onChange={(e) => setRepayDate(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-white mt-1 cursor-pointer" />
                   </div>
 
                   <div>
