@@ -110,12 +110,12 @@ export default function FinancialAnalytics({
 
   const allOutflowItems: OutflowLogItem[] = [];
 
-  pavanExpenses.forEach((e) => {
+  (pavanExpenses as any[]).forEach((e) => {
     if (matchesScope(e.expense_date)) {
       allOutflowItems.push({
         id: `pe-${e.id}`,
         person: "Pavan",
-        title: e.reason_text || "Direct Expense / Spend",
+        title: e.reason_text || e.note || "Direct Expense / Spend",
         amount: Number(e.amount || 0),
         source: e.source,
         date: e.expense_date
@@ -123,12 +123,12 @@ export default function FinancialAnalytics({
     }
   });
 
-  jcExpenses.forEach((e) => {
+  (jcExpenses as any[]).forEach((e) => {
     if (matchesScope(e.expense_date)) {
       allOutflowItems.push({
         id: `je-${e.id}`,
         person: "JC",
-        title: e.reason_text|| "Direct Expense / Spend",
+        title: e.reason_text || e.note || "Direct Expense / Spend",
         amount: Number(e.amount || 0),
         source: e.source,
         date: e.expense_date
@@ -239,7 +239,6 @@ export default function FinancialAnalytics({
       }
     });
 
-    // Sum all borrowings safely so they always reflect the total
     [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
       borrowingsGross += Number(b.amount || 0);
     });
