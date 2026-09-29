@@ -59,9 +59,8 @@ export default function NewDispatch({ currentUser, onSuccess, formatDate }: NewD
     }
 
     try {
-      // FIXED: Always use the rear/back environment camera for site photos
       const constraints: MediaStreamConstraints = {
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        video: { facingMode: currentUser === "ADMIN" ? "user" : { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
