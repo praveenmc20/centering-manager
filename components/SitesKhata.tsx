@@ -491,7 +491,7 @@ _Thank you for choosing Brothers Centering Yard._`;
         </div>
       )}
 
-      {/* Bill Receipt Modal */}
+      {/* Bill Receipt Modal - FIXED FOR MOBILE RESPONSIVENESS */}
       {billReceiptOrder && (() => {
         const { initialAgreedTotal, actualFinalBill, totalSaved, showDiscount, days } = calculateReceiptDiscount(billReceiptOrder);
         const totalPaid = getTotalPaid(billReceiptOrder.payments);
@@ -499,10 +499,10 @@ _Thank you for choosing Brothers Centering Yard._`;
         const returnDateStr = getCorrectReturnDateStr(billReceiptOrder, days);
 
         return (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-            <div className="bg-[#ffffff] border-2 border-slate-300 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[95vh]">
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-1 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-[#ffffff] border-2 border-slate-300 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[95vh]">
               
-              <div className="bg-[#0f172a] px-5 py-3.5 border-b border-slate-800 flex justify-between items-center print:hidden">
+              <div className="bg-[#0f172a] px-4 sm:px-5 py-3.5 border-b border-slate-800 flex justify-between items-center print:hidden">
                 <span className="text-xs font-bold text-amber-400 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" /> Official Corporate Tax Invoice
                 </span>
@@ -530,44 +530,43 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
               </div>
 
-              {/* Professional Light Corporate Invoice Template referencing local public assets */}
+              {/* Professional Light Corporate Invoice Template - Fully Mobile Responsive */}
               <div 
                 ref={invoiceRef} 
-                style={{ backgroundColor: "#ffffff", color: "#1e293b", padding: "32px", fontFamily: "sans-serif", position: "relative" }}
-                className="overflow-y-auto space-y-6"
+                style={{ backgroundColor: "#ffffff", color: "#1e293b", padding: "16px sm:32px", fontFamily: "sans-serif", position: "relative", width: "100%", boxSizing: "border-box" }}
+                className="overflow-y-auto space-y-4 sm:space-y-6 text-xs sm:text-sm"
               >
                 {/* Top Banner / Header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #e2e8f0", paddingBottom: "20px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                    {/* JC Logo without any green border */}
-                    <div style={{ width: "54px", height: "54px", borderRadius: "12px", background: "#0f172a", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #e2e8f0", paddingBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: "#0f172a", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <img src="/icon.png" alt="JC Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     </div>
                     <div>
-                      <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, letterSpacing: "-0.5px" }}>
+                      <h1 style={{ fontSize: "18px sm:22px", fontWeight: "900", color: "#0f172a", margin: 0, letterSpacing: "-0.5px" }}>
                         BROTHERS CENTERING & TRANSPORT
                       </h1>
-                      <p style={{ fontSize: "11px", color: "#64748b", margin: "2px 0 0 0" }}>
+                      <p style={{ fontSize: "10px sm:11px", color: "#64748b", margin: "2px 0 0 0" }}>
                         Ashok Leyland Logistics & Heavy Column Box Molds
                       </p>
-                      <p style={{ fontSize: "11px", color: "#16a34a", fontWeight: "700", margin: "2px 0 0 0" }}>
+                      <p style={{ fontSize: "10px sm:11px", color: "#16a34a", fontWeight: "700", margin: "2px 0 0 0" }}>
                         Karnataka, India • 📞 8123238826 / 8970685284
                       </p>
                     </div>
                   </div>
 
                   <div style={{ textAlign: "right" }}>
-                    <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#16a34a", margin: 0, letterSpacing: "1px" }}>INVOICE</h2>
-                    <p style={{ fontSize: "12px", color: "#0f172a", fontWeight: "bold", margin: "4px 0 2px 0" }}>Invoice Number: <span style={{ fontFamily: "monospace" }}>#{billReceiptOrder.id}</span></p>
-                    <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>Date: {formatDate(new Date().toISOString().split("T")[0])}</p>
+                    <h2 style={{ fontSize: "20px sm:26px", fontWeight: "900", color: "#16a34a", margin: 0, letterSpacing: "1px" }}>INVOICE</h2>
+                    <p style={{ fontSize: "11px sm:12px", color: "#0f172a", fontWeight: "bold", margin: "4px 0 2px 0" }}>Invoice Number: <span style={{ fontFamily: "monospace" }}>#{billReceiptOrder.id}</span></p>
+                    <p style={{ fontSize: "10px sm:11px", color: "#64748b", margin: 0 }}>Date: {formatDate(new Date().toISOString().split("T")[0])}</p>
                   </div>
                 </div>
 
                 {/* Bill To & Invoice From */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", fontSize: "12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", fontSize: "11px sm:12px" }}>
                   <div>
                     <span style={{ fontSize: "10px", textTransform: "uppercase", fontWeight: "900", letterSpacing: "1px", color: "#16a34a", display: "block", marginBottom: "4px" }}>Invoice To:</span>
-                    <h3 style={{ fontSize: "15px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px 0" }}>{billReceiptOrder.customerName}</h3>
+                    <h3 style={{ fontSize: "14px sm:15px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px 0" }}>{billReceiptOrder.customerName}</h3>
                     <p style={{ color: "#475569", margin: "2px 0" }}>📍 {billReceiptOrder.place}</p>
                     <p style={{ color: "#475569", margin: "2px 0" }}>📞 {billReceiptOrder.customerPhone}</p>
                   </div>
@@ -581,15 +580,15 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
 
                 {/* Items Table */}
-                <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "12px" }}>
+                <div style={{ borderRadius: "8px", overflowX: "auto", border: "1px solid #cbd5e1" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "11px sm:12px", minWidth: "400px" }}>
                     <thead>
                       <tr style={{ background: "#16a34a", color: "#ffffff", fontWeight: "bold", textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.5px" }}>
-                        <th style={{ padding: "10px 14px" }}>No. / Product Description</th>
-                        <th style={{ padding: "10px 8px", textAlign: "center" }}>Qty</th>
-                        <th style={{ padding: "10px 8px", textAlign: "right" }}>Rate / Day</th>
-                        <th style={{ padding: "10px 8px", textAlign: "center" }}>Days</th>
-                        <th style={{ padding: "10px 14px", textAlign: "right" }}>Total (₹)</th>
+                        <th style={{ padding: "8px 12px" }}>No. / Product Description</th>
+                        <th style={{ padding: "8px 6px", textAlign: "center" }}>Qty</th>
+                        <th style={{ padding: "8px 6px", textAlign: "right" }}>Rate / Day</th>
+                        <th style={{ padding: "8px 6px", textAlign: "center" }}>Days</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right" }}>Total (₹)</th>
                       </tr>
                     </thead>
                     <tbody style={{ fontFamily: "monospace", color: "#334155" }}>
@@ -598,22 +597,22 @@ _Thank you for choosing Brothers Centering Yard._`;
                         const lineTotal = it.qty * rate * days;
                         return (
                           <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0", background: idx % 2 === 0 ? "#f8fafc" : "#ffffff" }}>
-                            <td style={{ padding: "10px 14px", fontFamily: "sans-serif", fontWeight: "600", color: "#0f172a" }}>
+                            <td style={{ padding: "8px 12px", fontFamily: "sans-serif", fontWeight: "600", color: "#0f172a" }}>
                               {idx + 1 < 10 ? `0${idx + 1}` : idx + 1}. {it.name}
                             </td>
-                            <td style={{ padding: "10px 8px", textAlign: "center" }}>{it.qty}</td>
-                            <td style={{ padding: "10px 8px", textAlign: "right" }}>₹{rate}</td>
-                            <td style={{ padding: "10px 8px", textAlign: "center" }}>{days}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: "bold", color: "#0f172a" }}>₹{lineTotal.toLocaleString("en-IN")}</td>
+                            <td style={{ padding: "8px 6px", textAlign: "center" }}>{it.qty}</td>
+                            <td style={{ padding: "8px 6px", textAlign: "right" }}>₹{rate}</td>
+                            <td style={{ padding: "8px 6px", textAlign: "center" }}>{days}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: "bold", color: "#0f172a" }}>₹{lineTotal.toLocaleString("en-IN")}</td>
                           </tr>
                         );
                       })}
 
                       <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
-                        <td colSpan={4} style={{ padding: "10px 14px", fontFamily: "sans-serif", fontWeight: "600", color: "#0284c7" }}>
+                        <td colSpan={4} style={{ padding: "8px 12px", fontFamily: "sans-serif", fontWeight: "600", color: "#0284c7" }}>
                           🚚 Ashok Leyland Site Delivery Freight
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
+                        <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: "bold", color: "#0284c7" }}>
                           ₹{(billReceiptOrder.transportSettled || billReceiptOrder.transportAgreed).toLocaleString("en-IN")}
                         </td>
                       </tr>
@@ -622,17 +621,17 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
 
                 {/* Subtotals & Grand Total Section */}
-                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", alignItems: "start" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", alignItems: "start" }}>
                   <div>
-                    <h4 style={{ fontSize: "11px", fontWeight: "800", color: "#0f172a", textTransform: "uppercase", margin: "0 0 6px 0" }}>Terms & Conditions:</h4>
-                    <p style={{ fontSize: "10px", color: "#64748b", lineHeight: "1.4", margin: 0 }}>
-                      1. All rental items must be returned in good condition. Damages will be assessed upon return.<br />
+                    <h4 style={{ fontSize: "11px", fontWeight: "800", color: "#0f172a", textTransform: "uppercase", margin: "0 0 4px 0" }}>Terms & Conditions:</h4>
+                    <p style={{ fontSize: "9px sm:10px", color: "#64748b", lineHeight: "1.4", margin: 0 }}>
+                      1. All rental items must be returned in good condition. Damages assessed upon return.<br />
                       2. Payment is due immediately upon receipt of this commercial invoice.<br />
                       3. GPS Verified On-Site Proof logged securely in JC Group's system.
                     </p>
                   </div>
 
-                  <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "10px", padding: "14px", fontSize: "12px", fontFamily: "monospace" }}>
+                  <div style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "10px", padding: "12px", fontSize: "11px sm:12px", fontFamily: "monospace" }}>
                     {showDiscount && (
                       <>
                         <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b", fontFamily: "sans-serif", marginBottom: "4px" }}>
@@ -654,49 +653,49 @@ _Thank you for choosing Brothers Centering Yard._`;
                       <span>-₹{totalPaid.toLocaleString("en-IN")}</span>
                     </div>
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#16a34a", color: "#ffffff", padding: "10px 12px", borderRadius: "8px", fontWeight: "900", fontSize: "15px", marginTop: "10px", fontFamily: "sans-serif" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#16a34a", color: "#ffffff", padding: "8px 10px", borderRadius: "8px", fontWeight: "900", fontSize: "13px sm:15px", marginTop: "8px", fontFamily: "sans-serif" }}>
                       <span>{balance === 0 ? "TOTAL PAID" : "BALANCE DUE:"}</span>
                       <span>₹{balance.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Signature & Official JC Seal Section - Fixed Unified Layout */}
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: "24px", borderTop: "2px solid #e2e8f0", position: "relative" }}>
-  <div>
-    <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>Payment Method: Cash / Online Transfer</p>
-    <p style={{ fontSize: "11px", color: "#64748b", margin: "2px 0 0 0" }}>Thank you for your business!</p>
-  </div>
+                {/* Signature & Official JC Seal Section */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: "16px", borderTop: "2px solid #e2e8f0", position: "relative", flexWrap: "wrap", gap: "16px" }}>
+                  <div>
+                    <p style={{ fontSize: "10px sm:11px", color: "#64748b", margin: 0 }}>Payment Method: Cash / Online Transfer</p>
+                    <p style={{ fontSize: "10px sm:11px", color: "#64748b", margin: "2px 0 0 0" }}>Thank you for your business!</p>
+                  </div>
 
-  <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-    {/* Official JC Seal Image from public/seal.png */}
-    <div style={{ width: "110px", height: "110px", opacity: 0.92, transform: "rotate(-8deg)", flexShrink: 0 }}>
-      <img 
-        src="/seal.png" 
-        alt="JC Official Seal" 
-        style={{ width: "100%", height: "100%", objectFit: "contain", mixBlendMode: "multiply" }} 
-      />
-    </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+                    {/* Official JC Seal Image */}
+                    <div style={{ width: "95px sm:110px", height: "95px sm:110px", opacity: 0.92, transform: "rotate(-8deg)", flexShrink: 0 }}>
+                      <img 
+                        src="/seal.png" 
+                        alt="JC Official Seal" 
+                        style={{ width: "100%", height: "100%", objectFit: "contain", mixBlendMode: "multiply" }} 
+                      />
+                    </div>
 
-    {/* Brother's Signature with solid continuous line */}
-    <div style={{ textAlign: "center", width: "180px" }}>
-      <div style={{ height: "48px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2px" }}>
-        <img 
-          src="/signature.png" 
-          alt="Authorized Signature" 
-          style={{ maxHeight: "45px", maxWidth: "100%", objectFit: "contain", filter: "contrast(180%)" }}
-        />
-      </div>
-      <div style={{ width: "100%", borderTop: "1.5px solid #0f172a", paddingTop: "4px", fontWeight: "bold", fontSize: "11px", color: "#0f172a", textAlign: "center" }}>
-        Authorized Signatory
-      </div>
-    </div>
-  </div>
-</div>
+                    {/* Brother's Signature */}
+                    <div style={{ textAlign: "center", width: "150px sm:180px" }}>
+                      <div style={{ height: "42px sm:48px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2px" }}>
+                        <img 
+                          src="/signature.png" 
+                          alt="Authorized Signature" 
+                          style={{ maxHeight: "40px sm:45px", maxWidth: "100%", objectFit: "contain", filter: "contrast(180%)" }}
+                        />
+                      </div>
+                      <div style={{ width: "100%", borderTop: "1.5px solid #0f172a", paddingTop: "4px", fontWeight: "bold", fontSize: "10px sm:11px", color: "#0f172a", textAlign: "center" }}>
+                        Authorized Signatory
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
               </div>
 
-              <div className="bg-[#0f172a] p-4 border-t border-slate-800 flex justify-end gap-3 flex-wrap">
+              <div className="bg-[#0f172a] p-3 sm:p-4 border-t border-slate-800 flex justify-end gap-3 flex-wrap">
                 <button
                   onClick={() => setBillReceiptOrder(null)}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-lg text-xs"
