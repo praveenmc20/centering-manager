@@ -189,7 +189,7 @@ export default function SitesKhata({
         margin: [6, 6, 6, 6] as [number, number, number, number],
         filename: `Brothers_Invoice_${order.id}_${order.customerName.replace(/\s+/g, "_")}.pdf`,
         image: { type: "jpeg" as const, quality: 0.98 },
-        html2canvas: { scale: 2.5, useCORS: true, letterRendering: true },
+        html2canvas: { scale: 2.5, useCORS: true },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const }
       };
 
@@ -499,10 +499,10 @@ _Thank you for choosing Brothers Centering Yard._`;
         const returnDateStr = getCorrectReturnDateStr(billReceiptOrder, days);
 
         return (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-            <div className="bg-[#ffffff] border-2 border-slate-300 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[95vh]">
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-1 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-[#ffffff] border-2 border-slate-300 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[95vh]">
               
-              <div className="bg-[#0f172a] px-5 py-3.5 border-b border-slate-800 flex justify-between items-center print:hidden">
+              <div className="bg-[#0f172a] px-4 sm:px-5 py-3.5 border-b border-slate-800 flex justify-between items-center print:hidden">
                 <span className="text-xs font-bold text-amber-400 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" /> Official Corporate Tax Invoice
                 </span>
@@ -530,14 +530,14 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
               </div>
 
-              {/* Professional Light Corporate Invoice Template referencing local public assets */}
+              {/* Professional Light Corporate Invoice Template - Exact Original Design with Mobile Horizontal Scroll safety */}
               <div 
                 ref={invoiceRef} 
                 style={{ backgroundColor: "#ffffff", color: "#1e293b", padding: "32px", fontFamily: "sans-serif", position: "relative" }}
-                className="overflow-y-auto space-y-6"
+                className="overflow-x-auto overflow-y-auto space-y-6 w-full"
               >
                 {/* Top Banner / Header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #e2e8f0", paddingBottom: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #e2e8f0", paddingBottom: "20px", minWidth: "480px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
                     {/* JC Logo without any green border */}
                     <div style={{ width: "54px", height: "54px", borderRadius: "12px", background: "#0f172a", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -564,7 +564,7 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
 
                 {/* Bill To & Invoice From */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", fontSize: "12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", fontSize: "12px", minWidth: "480px" }}>
                   <div>
                     <span style={{ fontSize: "10px", textTransform: "uppercase", fontWeight: "900", letterSpacing: "1px", color: "#16a34a", display: "block", marginBottom: "4px" }}>Invoice To:</span>
                     <h3 style={{ fontSize: "15px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px 0" }}>{billReceiptOrder.customerName}</h3>
@@ -581,7 +581,7 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
 
                 {/* Items Table */}
-                <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
+                <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid #cbd5e1", minWidth: "480px" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "12px" }}>
                     <thead>
                       <tr style={{ background: "#16a34a", color: "#ffffff", fontWeight: "bold", textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.5px" }}>
@@ -622,7 +622,7 @@ _Thank you for choosing Brothers Centering Yard._`;
                 </div>
 
                 {/* Subtotals & Grand Total Section */}
-                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", alignItems: "start" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", alignItems: "start", minWidth: "480px" }}>
                   <div>
                     <h4 style={{ fontSize: "11px", fontWeight: "800", color: "#0f172a", textTransform: "uppercase", margin: "0 0 6px 0" }}>Terms & Conditions:</h4>
                     <p style={{ fontSize: "10px", color: "#64748b", lineHeight: "1.4", margin: 0 }}>
@@ -661,38 +661,38 @@ _Thank you for choosing Brothers Centering Yard._`;
                   </div>
                 </div>
 
-                {/* Signature & Official JC Seal Section - Fixed Unified Layout */}
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: "24px", borderTop: "2px solid #e2e8f0", position: "relative" }}>
-  <div>
-    <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>Payment Method: Cash / Online Transfer</p>
-    <p style={{ fontSize: "11px", color: "#64748b", margin: "2px 0 0 0" }}>Thank you for your business!</p>
-  </div>
+                {/* Signature & Official JC Seal Section - Exact Original Unified Layout */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: "24px", borderTop: "2px solid #e2e8f0", position: "relative", minWidth: "480px" }}>
+                  <div>
+                    <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>Payment Method: Cash / Online Transfer</p>
+                    <p style={{ fontSize: "11px", color: "#64748b", margin: "2px 0 0 0" }}>Thank you for your business!</p>
+                  </div>
 
-  <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-    {/* Official JC Seal Image from public/seal.png */}
-    <div style={{ width: "110px", height: "110px", opacity: 0.92, transform: "rotate(-8deg)", flexShrink: 0 }}>
-      <img 
-        src="/seal.png" 
-        alt="JC Official Seal" 
-        style={{ width: "100%", height: "100%", objectFit: "contain", mixBlendMode: "multiply" }} 
-      />
-    </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
+                    {/* Official JC Seal Image from public/seal.png */}
+                    <div style={{ width: "110px", height: "110px", opacity: 0.92, transform: "rotate(-8deg)", flexShrink: 0 }}>
+                      <img 
+                        src="/seal.png" 
+                        alt="JC Official Seal" 
+                        style={{ width: "100%", height: "100%", objectFit: "contain", mixBlendMode: "multiply" }} 
+                      />
+                    </div>
 
-    {/* Brother's Signature with solid continuous line */}
-    <div style={{ textAlign: "center", width: "180px" }}>
-      <div style={{ height: "48px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2px" }}>
-        <img 
-          src="/signature.png" 
-          alt="Authorized Signature" 
-          style={{ maxHeight: "45px", maxWidth: "100%", objectFit: "contain", filter: "contrast(180%)" }}
-        />
-      </div>
-      <div style={{ width: "100%", borderTop: "1.5px solid #0f172a", paddingTop: "4px", fontWeight: "bold", fontSize: "11px", color: "#0f172a", textAlign: "center" }}>
-        Authorized Signatory
-      </div>
-    </div>
-  </div>
-</div>
+                    {/* Brother's Signature with solid continuous line */}
+                    <div style={{ textAlign: "center", width: "180px" }}>
+                      <div style={{ height: "48px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2px" }}>
+                        <img 
+                          src="/signature.png" 
+                          alt="Authorized Signature" 
+                          style={{ maxHeight: "45px", maxWidth: "100%", objectFit: "contain", filter: "contrast(180%)" }}
+                        />
+                      </div>
+                      <div style={{ width: "100%", borderTop: "1.5px solid #0f172a", paddingTop: "4px", fontWeight: "bold", fontSize: "11px", color: "#0f172a", textAlign: "center" }}>
+                        Authorized Signatory
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
               </div>
 

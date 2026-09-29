@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { PlusCircle, Calendar, Camera, Plus, Trash2, Loader2, X } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { PlusCircle, Calendar, Camera, Plus, Trash2, Loader2, X, MapPin } from "lucide-react";
 import { supabase } from "../app/lib/supabase";
 import { SitePhotoItem } from "../types";
 
@@ -30,42 +30,47 @@ export default function NewDispatch({ currentUser, onSuccess, formatDate }: NewD
   const streamRef = useRef<MediaStream | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const reverseGeocode = async (lat: number, lng: number) => {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
-      const data = await res.json();
-      if (data && data.display_name) return data.display_name;
-    } catch (e) {
-      console.warn("Geocoding notice:", e);
-    }
-    return custPlace ? `${custPlace}, Karnataka, India` : "Site Location, Karnataka";
-  };
-
-  const openLiveCamera = async () => {
-    setGpsLoading(true);
+  // Fetch precise live GPS coordinates immediately on component load or when place changes
+  useEffect(() => {
     if ("geolocation" in navigator) {
+      setGpsLoading(true);
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          const fullAddr = await reverseGeocode(lat, lng);
-          setLiveGpsInfo({ lat: lat.toFixed(6), lng: lng.toFixed(6), address: fullAddr });
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+            const data = await res.json();
+            const addr = data && data.display_name ? data.display_name : `Location near (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            setLiveGpsInfo({ lat: lat.toFixed(6), lng: lng.toFixed(6), address: addr });
+          } catch (e) {
+            setLiveGpsInfo({ lat: lat.toFixed(6), lng: lng.toFixed(6), address: `GPS Position (${lat.toFixed(4)}, ${lng.toFixed(4)}) Karnataka` });
+          }
+          setGpsLoading(false);
         },
-        () => {
-          setLiveGpsInfo({ lat: "12.328400", lng: "76.612600", address: custPlace ? `${custPlace}, Karnataka` : "Karnataka" });
+        (err) => {
+          console.warn("GPS lookup warning:", err);
+          setLiveGpsInfo({ lat: "12.328400", lng: "76.612600", address: "Mysore / Palahalli, Karnataka, India" });
+          setGpsLoading(false);
         },
-        { enableHighAccuracy: true, timeout: 6000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
+    }
+  }, []);
+
+  const openLiveCamera = async () => {
+    if (!liveGpsInfo) {
+      alert("Please wait a second for GPS satellite lock...");
+      return;
     }
 
     try {
       const constraints: MediaStreamConstraints = {
-        video: { facingMode: currentUser === "ADMIN" ? "user" : { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       setIsCameraOpen(true);
-      setGpsLoading(false);
 
       setTimeout(() => {
         if (videoRef.current) {
@@ -74,7 +79,6 @@ export default function NewDispatch({ currentUser, onSuccess, formatDate }: NewD
         }
       }, 250);
     } catch (err: any) {
-      setGpsLoading(false);
       alert("Camera access denied: " + err.message);
     }
   };
@@ -88,7 +92,7 @@ export default function NewDispatch({ currentUser, onSuccess, formatDate }: NewD
   };
 
   const captureFrameFromVideo = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !liveGpsInfo) return;
     const video = videoRef.current;
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth || 1280;
@@ -112,14 +116,14 @@ export default function NewDispatch({ currentUser, onSuccess, formatDate }: NewD
     const addrSize = Math.max(12, Math.round(stampHeight * 0.15));
     ctx.fillStyle = "#ffffff";
     ctx.font = `500 ${addrSize}px sans-serif`;
-    const fullAddress = liveGpsInfo?.address || (custPlace ? `${custPlace}, Karnataka, India` : "Site Location, Karnataka");
+    const fullAddress = liveGpsInfo.address;
     const displayAddr = fullAddress.length > 95 ? fullAddress.substring(0, 92) + "..." : fullAddress;
     ctx.fillText(`🏠 Address: ${displayAddr}`, 24, canvas.height - stampHeight + titleSize + addrSize + 16);
 
     ctx.fillStyle = "#38bdf8";
     ctx.font = `bold ${Math.max(11, Math.round(addrSize * 0.95))}px monospace`;
     const dateStr = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "medium" });
-    const gpsCoord = liveGpsInfo ? `Lat: ${liveGpsInfo.lat}° N | Lng: ${liveGpsInfo.lng}° E` : "Lat: 12.328400° N | Lng: 76.612600° E";
+    const gpsCoord = `Lat: ${liveGpsInfo.lat}° N | Lng: ${liveGpsInfo.lng}° E`;
     ctx.fillText(`🌐 ${gpsCoord} • 📅 ${dateStr}`, 24, canvas.height - 12);
 
     canvas.toBlob((blob) => {
@@ -128,8 +132,8 @@ export default function NewDispatch({ currentUser, onSuccess, formatDate }: NewD
           blob,
           url: URL.createObjectURL(blob),
           address: fullAddress,
-          lat: liveGpsInfo?.lat || "12.328400",
-          lng: liveGpsInfo?.lng || "76.612600"
+          lat: liveGpsInfo.lat,
+          lng: liveGpsInfo.lng
         }]);
       }
       closeLiveCamera();
@@ -248,6 +252,11 @@ export default function NewDispatch({ currentUser, onSuccess, formatDate }: NewD
           <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase tracking-wider">
             <Camera className="w-4 h-4 text-amber-400" /> On-Site GPS Proof Photos ({capturedPhotos.length})
           </label>
+          {gpsLoading && (
+            <span className="text-[11px] text-cyan-400 flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" /> Locking Satellite GPS...
+            </span>
+          )}
         </div>
 
         {capturedPhotos.length > 0 && (
@@ -263,8 +272,14 @@ export default function NewDispatch({ currentUser, onSuccess, formatDate }: NewD
           </div>
         )}
 
-        <button type="button" onClick={openLiveCamera} disabled={gpsLoading} className="w-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 py-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">
-          <Camera className="w-4 h-4" /> {capturedPhotos.length === 0 ? "Open Camera & Snap First Site Photo" : "+ Add Another Spot Photo"}
+        <button 
+          type="button" 
+          onClick={openLiveCamera} 
+          disabled={gpsLoading || !liveGpsInfo} 
+          className="w-full bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-50 border border-amber-500/40 text-amber-300 py-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition"
+        >
+          <Camera className="w-4 h-4" /> 
+          {gpsLoading ? "Acquiring Precise GPS Satellites..." : capturedPhotos.length === 0 ? "Open Camera & Snap First Site Photo" : "+ Add Another Spot Photo"}
         </button>
       </div>
 
