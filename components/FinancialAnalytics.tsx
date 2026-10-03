@@ -53,7 +53,7 @@ export default function FinancialAnalytics({
   const [filterMode, setFilterMode] = useState<"MONTHLY" | "YEARLY" | "ALL_TIME">("MONTHLY");
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [selectedMonth, setSelectedMonth] = useState<string>("ALL");
-  const [streamModalType, setStreamModalType] = useState<"CENTERING" | "TRANSPORT" | "DAIRY" | "SALARY" | "LIFTED" | "BORROWINGS" | "OUTFLOWS" | null>(null);
+  const [streamModalType, setStreamModalType] = useState<"CENTERING" | "DAIRY" | "SALARY" | "LIFTED" | "BORROWINGS" | "OUTFLOWS" | null>(null);
   const [showUncollectedModal, setShowUncollectedModal] = useState(false);
 
   const getAvailableYears = () => {
@@ -88,15 +88,13 @@ export default function FinancialAnalytics({
     const itemsSub = o.items.reduce((s, it) => s + (it.qty * it.initialRate * days), 0);
     const transportVal = o.transportSettled || o.transportAgreed || 0;
     const totalBill = o.finalLumpSum !== null ? o.finalLumpSum : (itemsSub + transportVal);
-    const debt = Math.max(0, totalBill - paid);
+    
+    const debt = o.status === "COMPLETED" ? 0 : Math.max(0, totalBill - paid);
 
-    if (totalBill <= 0) return { boxesEarned: 0, transportEarned: 0, debt, totalBill, paid };
+    if (totalBill <= 0) return { centeringEarned: 0, debt, totalBill, paid };
 
-    const vProp = transportVal / totalBill;
-    const transportEarned = paid * vProp;
-    const boxesEarned = paid * (1 - vProp);
-
-    return { boxesEarned, transportEarned, debt, totalBill, paid };
+    const centeringEarned = paid; 
+    return { centeringEarned, debt, totalBill, paid };
   };
 
   interface OutflowLogItem {
@@ -208,8 +206,7 @@ export default function FinancialAnalytics({
   });
 
   const calculateTotals = () => {
-    let boxesGross = 0;
-    let transportGross = 0;
+    let centeringGross = 0;
     let dairyGross = 0;
     let salaryGross = 0;
     let liftedGross = 0;
@@ -219,8 +216,7 @@ export default function FinancialAnalytics({
     orders.forEach((o) => {
       if (matchesScope(o.dispatchDate)) {
         const res = processOrderEarnings(o);
-        boxesGross += res.boxesEarned;
-        transportGross += res.transportEarned;
+        centeringGross += res.centeringEarned;
         totalDebt += res.debt;
       }
     });
@@ -239,11 +235,13 @@ export default function FinancialAnalytics({
       }
     });
 
-    [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
-      borrowingsGross += Number(b.amount || 0);
+    [...pavanBorrowings, ...jcBorrowings].forEach((b: any) => {
+      if (!b.exclude_from_graph) {
+        borrowingsGross += Number(b.amount || 0);
+      }
     });
 
-    const isCentering = (src: string) => src && (src.includes("Centering") || src === "Centering Cash");
+    const isCentering = (src: string) => src && (src.includes("Centering") || src === "Centering Cash" || src.includes("Transport"));
     const isDairy = (src: string) => src && (src.includes("Dairy") || src === "BMC Dairy Cash");
     const isSalary = (src: string) => src && (src.includes("Salary") || src === "JC Salary Cash");
     const isLifted = (src: string) => src && (src.includes("Lifted") || src === "Margadarshi Lifted Cash");
@@ -265,20 +263,17 @@ export default function FinancialAnalytics({
       else if (isBorrowing(item.source)) borrowingsSpent += item.amount;
     });
 
-    const centeringInflow = Math.round(boxesGross + transportGross);
-    const centeringRemaining = Math.round(centeringInflow - centeringSpent);
+    const centeringRemaining = Math.round(centeringGross - centeringSpent);
     const dairyRemaining = Math.round(dairyGross - dairySpent);
     const salaryRemaining = Math.round(salaryGross - salarySpent);
     const liftedRemaining = Math.round(liftedGross - liftedSpent);
     const borrowingsRemaining = Math.round(borrowingsGross - borrowingsSpent);
 
-    const totalInflow = Math.round(boxesGross + transportGross + dairyGross + salaryGross + liftedGross + borrowingsGross);
+    const totalInflow = Math.round(centeringGross + dairyGross + salaryGross + liftedGross + borrowingsGross);
     const netCashInHand = totalInflow - Math.round(totalOutflows);
 
     return {
-      boxesGross: Math.round(boxesGross),
-      transportGross: Math.round(transportGross),
-      centeringInflow,
+      centeringGross: Math.round(centeringGross),
       centeringSpent: Math.round(centeringSpent),
       centeringRemaining,
 
@@ -313,6 +308,7 @@ export default function FinancialAnalytics({
     
     if (streamModalType === "BORROWINGS") {
       return [...pavanBorrowings, ...jcBorrowings]
+        .filter((b: any) => !b.exclude_from_graph)
         .map(b => ({
           id: `borrow-${b.id}`,
           person: b.created_by || "Pavan/JC",
@@ -324,8 +320,8 @@ export default function FinancialAnalytics({
     }
 
     return allOutflowItems.filter((item) => {
-      if (streamModalType === "CENTERING" || streamModalType === "TRANSPORT") {
-        return item.source && (item.source.includes("Centering") || item.source === "Centering Cash");
+      if (streamModalType === "CENTERING") {
+        return item.source && (item.source.includes("Centering") || item.source === "Centering Cash" || item.source.includes("Transport"));
       }
       if (streamModalType === "DAIRY") {
         return item.source && (item.source.includes("Dairy") || item.source === "BMC Dairy Cash");
@@ -357,7 +353,6 @@ export default function FinancialAnalytics({
           const prefix = `${selectedYear}-${mStr}`;
 
           let centering = 0;
-          let transport = 0;
           let dairy = 0;
           let salary = 0;
           let borrowings = 0;
@@ -367,8 +362,7 @@ export default function FinancialAnalytics({
           orders.forEach((o) => {
             if (o.dispatchDate && o.dispatchDate.startsWith(prefix)) {
               const res = processOrderEarnings(o);
-              centering += res.boxesEarned;
-              transport += res.transportEarned;
+              centering += res.centeringEarned;
               pendingDebt += res.debt;
             }
           });
@@ -381,8 +375,10 @@ export default function FinancialAnalytics({
             if (s.credited_date && s.credited_date.startsWith(prefix)) salary += Number(s.net_credited || 0);
           });
 
-          [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
-            if (b.borrowed_date && b.borrowed_date.startsWith(prefix)) borrowings += Number(b.amount || 0);
+          [...pavanBorrowings, ...jcBorrowings].forEach((b: any) => {
+            if (!b.exclude_from_graph && b.borrowed_date && b.borrowed_date.startsWith(prefix)) {
+              borrowings += Number(b.amount || 0);
+            }
           });
 
           allOutflowItems.forEach((it) => {
@@ -392,13 +388,11 @@ export default function FinancialAnalytics({
           return {
             label: name,
             centering: Math.round(centering),
-            transport: Math.round(transport),
             dairy: Math.round(dairy),
             salary: Math.round(salary),
             borrowings: Math.round(borrowings),
             outflows: Math.round(outflows),
-            pendingDebt: Math.round(pendingDebt),
-            netProfit: Math.round(centering + transport + dairy + salary + borrowings - outflows)
+            pendingDebt: Math.round(pendingDebt)
           };
         });
       } else {
@@ -407,7 +401,6 @@ export default function FinancialAnalytics({
         const name = MONTH_NAMES[Number(selectedMonth) - 1];
 
         let centering = 0;
-        let transport = 0;
         let dairy = 0;
         let salary = 0;
         let borrowings = 0;
@@ -417,8 +410,7 @@ export default function FinancialAnalytics({
         orders.forEach((o) => {
           if (o.dispatchDate && o.dispatchDate.startsWith(prefix)) {
             const res = processOrderEarnings(o);
-            centering += res.boxesEarned;
-            transport += res.transportEarned;
+            centering += res.centeringEarned;
             pendingDebt += res.debt;
           }
         });
@@ -431,8 +423,10 @@ export default function FinancialAnalytics({
           if (s.credited_date && s.credited_date.startsWith(prefix)) salary += Number(s.net_credited || 0);
         });
 
-        [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
-          if (b.borrowed_date && b.borrowed_date.startsWith(prefix)) borrowings += Number(b.amount || 0);
+        [...pavanBorrowings, ...jcBorrowings].forEach((b: any) => {
+          if (!b.exclude_from_graph && b.borrowed_date && b.borrowed_date.startsWith(prefix)) {
+            borrowings += Number(b.amount || 0);
+          }
         });
 
         allOutflowItems.forEach((it) => {
@@ -442,13 +436,11 @@ export default function FinancialAnalytics({
         return [{
           label: `${name} ${selectedYear}`,
           centering: Math.round(centering),
-          transport: Math.round(transport),
           dairy: Math.round(dairy),
           salary: Math.round(salary),
           borrowings: Math.round(borrowings),
           outflows: Math.round(outflows),
-          pendingDebt: Math.round(pendingDebt),
-          netProfit: Math.round(centering + transport + dairy + salary + borrowings - outflows)
+          pendingDebt: Math.round(pendingDebt)
         }];
       }
     }
@@ -456,7 +448,6 @@ export default function FinancialAnalytics({
     const years = getAvailableYears().sort((a, b) => a.localeCompare(b));
     return years.map((yr) => {
       let centering = 0;
-      let transport = 0;
       let dairy = 0;
       let salary = 0;
       let borrowings = 0;
@@ -466,8 +457,7 @@ export default function FinancialAnalytics({
       orders.forEach((o) => {
         if (o.dispatchDate && o.dispatchDate.startsWith(yr)) {
           const res = processOrderEarnings(o);
-          centering += res.boxesEarned;
-          transport += res.transportEarned;
+          centering += res.centeringEarned;
           pendingDebt += res.debt;
         }
       });
@@ -480,8 +470,10 @@ export default function FinancialAnalytics({
         if (s.credited_date && s.credited_date.startsWith(yr)) salary += Number(s.net_credited || 0);
       });
 
-      [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
-        if (b.borrowed_date && b.borrowed_date.startsWith(yr)) borrowings += Number(b.amount || 0);
+      [...pavanBorrowings, ...jcBorrowings].forEach((b: any) => {
+        if (!b.exclude_from_graph && b.borrowed_date && b.borrowed_date.startsWith(yr)) {
+          borrowings += Number(b.amount || 0);
+        }
       });
 
       allOutflowItems.forEach((it) => {
@@ -491,13 +483,11 @@ export default function FinancialAnalytics({
       return {
         label: `Year ${yr}`,
         centering: Math.round(centering),
-        transport: Math.round(transport),
         dairy: Math.round(dairy),
         salary: Math.round(salary),
         borrowings: Math.round(borrowings),
         outflows: Math.round(outflows),
-        pendingDebt: Math.round(pendingDebt),
-        netProfit: Math.round(centering + transport + dairy + salary + borrowings - outflows)
+        pendingDebt: Math.round(pendingDebt)
       };
     });
   };
@@ -615,30 +605,18 @@ export default function FinancialAnalytics({
           </div>
         </div>
 
-        {/* 7 SECTION AUDIT CARDS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {/* 6 SECTION AUDIT CARDS */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div 
             onClick={() => setStreamModalType("CENTERING")}
             className="bg-slate-950/80 p-3 rounded-xl border border-amber-500/40 hover:border-amber-400 transition cursor-pointer group"
           >
             <div className="flex justify-between items-center">
-              <span className="text-[10px] uppercase text-amber-400 font-bold">1. Centering</span>
+              <span className="text-[10px] uppercase text-amber-400 font-bold">1. Centering & Transport</span>
               <span className="text-[10px] text-slate-500 group-hover:text-amber-400">Details →</span>
             </div>
-            <h4 className="text-lg font-black text-white mt-1">₹{totals.boxesGross.toLocaleString("en-IN")}</h4>
+            <h4 className="text-lg font-black text-white mt-1">₹{totals.centeringGross.toLocaleString("en-IN")}</h4>
             <span className="text-[10px] text-slate-400 block">Remaining: <strong className="text-emerald-400">₹{totals.centeringRemaining.toLocaleString("en-IN")}</strong></span>
-          </div>
-
-          <div 
-            onClick={() => setStreamModalType("TRANSPORT")}
-            className="bg-slate-950/80 p-3 rounded-xl border border-blue-500/40 hover:border-blue-400 transition cursor-pointer group"
-          >
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] uppercase text-blue-400 font-bold">2. Transport</span>
-              <span className="text-[10px] text-slate-500 group-hover:text-blue-400">Details →</span>
-            </div>
-            <h4 className="text-lg font-black text-white mt-1">₹{totals.transportGross.toLocaleString("en-IN")}</h4>
-            <span className="text-[10px] text-slate-400 block">Trip delivery fees</span>
           </div>
 
           <div 
@@ -646,7 +624,7 @@ export default function FinancialAnalytics({
             className="bg-slate-950/80 p-3 rounded-xl border border-emerald-500/40 hover:border-emerald-400 transition cursor-pointer group"
           >
             <div className="flex justify-between items-center">
-              <span className="text-[10px] uppercase text-emerald-400 font-bold">3. BMC Dairy</span>
+              <span className="text-[10px] uppercase text-emerald-400 font-bold">2. BMC Dairy</span>
               <span className="text-[10px] text-slate-500 group-hover:text-emerald-400">Details →</span>
             </div>
             <h4 className="text-lg font-black text-white mt-1">₹{totals.dairyGross.toLocaleString("en-IN")}</h4>
@@ -658,7 +636,7 @@ export default function FinancialAnalytics({
             className="bg-slate-950/80 p-3 rounded-xl border border-indigo-500/40 hover:border-indigo-400 transition cursor-pointer group"
           >
             <div className="flex justify-between items-center">
-              <span className="text-[10px] uppercase text-indigo-400 font-bold">4. JC Salary</span>
+              <span className="text-[10px] uppercase text-indigo-400 font-bold">3. JC Salary</span>
               <span className="text-[10px] text-slate-500 group-hover:text-indigo-400">Details →</span>
             </div>
             <h4 className="text-lg font-black text-white mt-1">₹{totals.salaryGross.toLocaleString("en-IN")}</h4>
@@ -670,7 +648,7 @@ export default function FinancialAnalytics({
             className="bg-slate-950/80 p-3 rounded-xl border border-teal-500/40 hover:border-teal-400 transition cursor-pointer group"
           >
             <div className="flex justify-between items-center">
-              <span className="text-[10px] uppercase text-teal-400 font-bold">5. Chit Lifted</span>
+              <span className="text-[10px] uppercase text-teal-400 font-bold">4. Chit Lifted</span>
               <span className="text-[10px] text-slate-500 group-hover:text-teal-400">Details →</span>
             </div>
             <h4 className="text-lg font-black text-white mt-1">₹{totals.liftedGross.toLocaleString("en-IN")}</h4>
@@ -682,7 +660,7 @@ export default function FinancialAnalytics({
             className="bg-slate-950/80 p-3 rounded-xl border border-cyan-500/40 hover:border-cyan-400 transition cursor-pointer group"
           >
             <div className="flex justify-between items-center">
-              <span className="text-[10px] uppercase text-cyan-400 font-bold">6. Borrowings</span>
+              <span className="text-[10px] uppercase text-cyan-400 font-bold">5. Borrowings</span>
               <span className="text-[10px] text-slate-500 group-hover:text-cyan-400">Details →</span>
             </div>
             <h4 className="text-lg font-black text-white mt-1">₹{totals.borrowingsGross.toLocaleString("en-IN")}</h4>
@@ -694,7 +672,7 @@ export default function FinancialAnalytics({
             className="bg-slate-950/80 p-3 rounded-xl border border-purple-500/40 hover:border-purple-400 transition cursor-pointer group"
           >
             <div className="flex justify-between items-center">
-              <span className="text-[10px] uppercase text-purple-400 font-bold">7. Outflows</span>
+              <span className="text-[10px] uppercase text-purple-400 font-bold">6. Outflows</span>
               <span className="text-[10px] text-slate-500 group-hover:text-purple-400">Details →</span>
             </div>
             <h4 className="text-lg font-black text-red-400 mt-1">₹{totals.totalOutflow.toLocaleString("en-IN")}</h4>
@@ -724,8 +702,7 @@ export default function FinancialAnalytics({
               />
               <Legend wrapperStyle={{ paddingTop: 16, fontSize: 12 }} />
 
-              <Bar dataKey="centering" name="Centering Boxes (₹)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="transport" name="Ashok Leyland (₹)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="centering" name="Centering & Transport (₹)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
               <Bar dataKey="dairy" name="BMC Milk Dairy (₹)" fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="salary" name="JC Salary (₹)" fill="#6366f1" radius={[4, 4, 0, 0]} />
               <Bar dataKey="borrowings" name="Borrowings (₹)" fill="#06b6d4" radius={[4, 4, 0, 0]} />
@@ -736,13 +713,13 @@ export default function FinancialAnalytics({
         </div>
       </div>
 
-      {/* 4. EXECUTIVE FINANCIAL STATEMENT MATRIX TABLE */}
+      {/* 4. EXECUTIVE FINANCIAL STATEMENT MATRIX TABLE (NET PROFIT REMOVED) */}
       <div className="bg-slate-800 rounded-2xl border border-slate-700 p-5 shadow-2xl space-y-4">
         <div className="border-b border-slate-700 pb-3">
           <h3 className="font-bold text-white text-base flex items-center gap-2">
             <Layers className="w-5 h-5 text-amber-400" /> Executive Financial Statement Matrix
           </h3>
-          <p className="text-xs text-slate-400">Full audit breakdown of Inflow, Outflow, and Net Profit across periods</p>
+          <p className="text-xs text-slate-400">Full audit breakdown of Inflow, Outflow, and Market Due across periods</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -750,13 +727,11 @@ export default function FinancialAnalytics({
             <thead className="bg-slate-950 text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-slate-700">
               <tr>
                 <th className="p-3 font-sans">Period</th>
-                <th className="p-3 text-right">Centering</th>
-                <th className="p-3 text-right">Transport</th>
+                <th className="p-3 text-right">Centering & Transport</th>
                 <th className="p-3 text-right">Dairy</th>
                 <th className="p-3 text-right">JC Salary</th>
                 <th className="p-3 text-right">Borrowings</th>
                 <th className="p-3 text-right text-red-400">Outflows</th>
-                <th className="p-3 text-right text-emerald-400">Net Profit</th>
                 <th className="p-3 text-right text-purple-400">Market Due</th>
               </tr>
             </thead>
@@ -765,14 +740,10 @@ export default function FinancialAnalytics({
                 <tr key={idx} className="hover:bg-slate-900/60 transition">
                   <td className="p-3 font-sans font-bold text-white">{row.label}</td>
                   <td className="p-3 text-right text-amber-400">₹{row.centering.toLocaleString("en-IN")}</td>
-                  <td className="p-3 text-right text-blue-400">₹{row.transport.toLocaleString("en-IN")}</td>
                   <td className="p-3 text-right text-emerald-400">₹{row.dairy.toLocaleString("en-IN")}</td>
                   <td className="p-3 text-right text-indigo-400">₹{row.salary.toLocaleString("en-IN")}</td>
                   <td className="p-3 text-right text-cyan-400">₹{row.borrowings.toLocaleString("en-IN")}</td>
                   <td className="p-3 text-right text-red-400 font-bold">-₹{row.outflows.toLocaleString("en-IN")}</td>
-                  <td className={`p-3 text-right font-black ${row.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    ₹{row.netProfit.toLocaleString("en-IN")}
-                  </td>
                   <td className="p-3 text-right text-purple-400 font-bold">₹{row.pendingDebt.toLocaleString("en-IN")}</td>
                 </tr>
               ))}
@@ -796,8 +767,7 @@ export default function FinancialAnalytics({
             <div className="border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Info className="w-5 h-5 text-cyan-400" />
-                {streamModalType === "CENTERING" && "🏗️ Centering Boxes Rental Stream Audit"}
-                {streamModalType === "TRANSPORT" && "🚚 Ashok Leyland Transport Stream Audit"}
+                {streamModalType === "CENTERING" && "🏗️ Centering & Transport Revenue Stream Audit"}
                 {streamModalType === "DAIRY" && "🥛 BMC Milk Dairy Stream Audit"}
                 {streamModalType === "SALARY" && "💼 JC Salary Inflow & Spend Audit"}
                 {streamModalType === "LIFTED" && "💰 Margadarshi Lifted Chit Cash Audit"}
@@ -813,8 +783,7 @@ export default function FinancialAnalytics({
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase">Total Inflow / Raised:</span>
                 <strong className="text-white text-sm">
-                  ₹{streamModalType === "CENTERING" ? totals.boxesGross.toLocaleString("en-IN")
-                    : streamModalType === "TRANSPORT" ? totals.transportGross.toLocaleString("en-IN")
+                  ₹{streamModalType === "CENTERING" ? totals.centeringGross.toLocaleString("en-IN")
                     : streamModalType === "DAIRY" ? totals.dairyGross.toLocaleString("en-IN")
                     : streamModalType === "SALARY" ? totals.salaryGross.toLocaleString("en-IN")
                     : streamModalType === "LIFTED" ? totals.liftedGross.toLocaleString("en-IN")
@@ -826,7 +795,7 @@ export default function FinancialAnalytics({
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase">Total Spent:</span>
                 <strong className="text-red-400 text-sm">
-                  -₹{streamModalType === "CENTERING" || streamModalType === "TRANSPORT" ? totals.centeringSpent.toLocaleString("en-IN")
+                  -₹{streamModalType === "CENTERING" ? totals.centeringSpent.toLocaleString("en-IN")
                     : streamModalType === "DAIRY" ? totals.dairySpent.toLocaleString("en-IN")
                     : streamModalType === "SALARY" ? totals.salarySpent.toLocaleString("en-IN")
                     : streamModalType === "LIFTED" ? totals.liftedSpent.toLocaleString("en-IN")
@@ -838,7 +807,7 @@ export default function FinancialAnalytics({
               <div>
                 <span className="text-emerald-400 block text-[10px] uppercase font-bold">Remaining in Hand:</span>
                 <strong className="text-emerald-400 text-sm">
-                  ₹{streamModalType === "CENTERING" || streamModalType === "TRANSPORT" ? totals.centeringRemaining.toLocaleString("en-IN")
+                  ₹{streamModalType === "CENTERING" ? totals.centeringRemaining.toLocaleString("en-IN")
                     : streamModalType === "DAIRY" ? totals.dairyRemaining.toLocaleString("en-IN")
                     : streamModalType === "SALARY" ? totals.salaryRemaining.toLocaleString("en-IN")
                     : streamModalType === "LIFTED" ? totals.liftedRemaining.toLocaleString("en-IN")

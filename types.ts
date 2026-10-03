@@ -82,6 +82,7 @@ export interface PavanBorrowing {
   reason_text: string | null;
   audio_url: string | null;
   status: "PENDING" | "CLEARED";
+  exclude_from_graph?: boolean;
   created_by: string;
   repayments?: BorrowingRepayment[];
 }
@@ -99,6 +100,7 @@ export interface JCBorrowing {
   reason_text: string | null;
   audio_url: string | null;
   status: "PENDING" | "CLEARED";
+  exclude_from_graph?: boolean;
   created_by: string;
   repayments?: BorrowingRepayment[];
 }

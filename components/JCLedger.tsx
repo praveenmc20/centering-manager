@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { ArrowDownRight, HandCoins, Calendar, Trash2, Mic, Square, X, Eye, Bell, Check, Loader2, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowDownRight, HandCoins, Calendar, Trash2, Mic, Square, X, Eye, Bell, Check, Loader2, FileText, CheckCircle2, ShieldAlert } from "lucide-react";
 import { supabase } from "../app/lib/supabase";
 import { JCExpense, JCBorrowing, CashSourceOption } from "../types";
 import MoneySourceSelector from "./MoneySourceSelector";
@@ -170,6 +170,7 @@ export default function JCLedger({
         reason_text: borrowReasonMode === "TYPE" ? borrowReasonText : null,
         audio_url: finalAudioUrl,
         status: "PENDING",
+        exclude_from_graph: false,
         created_by: currentUser || "JC"
       });
       if (error) throw error;
@@ -186,6 +187,18 @@ export default function JCLedger({
       alert("JC Borrowing error: " + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleExcludeGraph = async (b: JCBorrowing) => {
+    if (currentUser !== "ADMIN") return;
+    const newVal = !b.exclude_from_graph;
+    try {
+      const { error } = await supabase.from("jc_borrowings").update({ exclude_from_graph: newVal }).eq("id", b.id);
+      if (error) throw error;
+      await onRefresh();
+    } catch (err: any) {
+      alert("Error updating loan setting: " + err.message);
     }
   };
 
@@ -607,11 +620,26 @@ export default function JCLedger({
                         ) : (
                           <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold">₹{remaining.toLocaleString("en-IN")} Pending</span>
                         )}
+                        {b.exclude_from_graph && (
+                          <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded font-bold text-[10px]">
+                            🛡️ Past Loan (Excluded from Inflows)
+                          </span>
+                        )}
                       </div>
                       <span className="text-slate-500 block mt-1">Taken: {formatDate(b.borrowed_date)}</span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {currentUser === "ADMIN" && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleExcludeGraph(b)}
+                          className={`px-2.5 py-1 rounded text-[11px] font-bold border transition ${b.exclude_from_graph ? "bg-purple-600 text-white border-purple-500" : "bg-slate-800 text-slate-300 border-slate-700 hover:border-purple-400"}`}
+                          title="Admin toggle: Exclude past loan amount from graph cash inflow calculations"
+                        >
+                          {b.exclude_from_graph ? "✓ Past Loan (Excluded)" : "Mark as Past Loan"}
+                        </button>
+                      )}
                       {!isCleared && (
                         <button
                           type="button"

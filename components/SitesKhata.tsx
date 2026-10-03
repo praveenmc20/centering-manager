@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react";
 import { 
   MapPin, Phone, Calendar, Truck, Edit3, IndianRupee, 
   Receipt, Trash2, Camera, X, Share2, Loader2, Download, 
-  CheckCircle2, ShieldCheck, FileText, Sparkles, Check, CheckCheck, Image as ImageIcon
+  CheckCircle2, ShieldCheck, FileText, Sparkles, Check, CheckCheck, Image as ImageIcon, Filter
 } from "lucide-react";
 import { supabase } from "../app/lib/supabase";
 import { Order, Item, Payment, SitePhotoItem } from "../types";
@@ -16,6 +16,11 @@ interface SitesKhataProps {
   formatDate: (date: string) => string;
   calculateReturnDateString: (startDate: string, days: number) => string;
 }
+
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
 
 export default function SitesKhata({
   orders,
@@ -38,12 +43,60 @@ export default function SitesKhata({
   const [billReceiptOrder, setBillReceiptOrder] = useState<Order | null>(null);
   const [previewPhotoModal, setPreviewPhotoModal] = useState<{ photos: SitePhotoItem[]; currentIndex: number } | null>(null);
 
+  // Filter States for Sites & Khata
+  const [siteFilterMode, setSiteFilterMode] = useState<"ALL" | "MONTHLY" | "YEARLY" | "WEEKLY">("ALL");
+  const [filterYear, setFilterYear] = useState<string>("2026");
+  const [filterMonth, setFilterMonth] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ON_SITE" | "PENDING_BALANCE" | "COMPLETED">("ALL");
+
   const [loading, setLoading] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [photoGenerating, setPhotoGenerating] = useState(false);
   const invoiceRef = useRef<HTMLDivElement | null>(null);
 
   const getTotalPaid = (payments: Payment[]) => payments.reduce((acc, p) => acc + Number(p.amount), 0);
+
+  const getAvailableYears = () => {
+    const yearSet = new Set<string>();
+    yearSet.add("2026");
+    yearSet.add(new Date().getFullYear().toString());
+    orders.forEach((o) => o.dispatchDate && yearSet.add(o.dispatchDate.slice(0, 4)));
+    return Array.from(yearSet).sort((a, b) => b.localeCompare(a));
+  };
+
+  const getFilteredOrders = () => {
+    return orders.filter((ord) => {
+      if (statusFilter !== "ALL" && ord.status !== statusFilter) return false;
+      if (siteFilterMode === "ALL") return true;
+
+      const dateStr = ord.dispatchDate;
+      if (!dateStr) return true;
+
+      if (siteFilterMode === "YEARLY") {
+        return dateStr.startsWith(filterYear);
+      }
+
+      if (siteFilterMode === "MONTHLY") {
+        if (!dateStr.startsWith(filterYear)) return false;
+        if (filterMonth !== "ALL") {
+          return dateStr.startsWith(`${filterYear}-${filterMonth}`);
+        }
+        return true;
+      }
+
+      if (siteFilterMode === "WEEKLY") {
+        const dDate = new Date(dateStr + "T00:00:00");
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - dDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      }
+
+      return true;
+    });
+  };
+
+  const filteredOrders = getFilteredOrders();
 
   const openSettlement = (order: Order) => {
     setSelectedOrder(order);
@@ -268,23 +321,128 @@ _Thank you for choosing Brothers Centering Yard._`;
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-slate-300">Live Sites & Outstanding Collections</h2>
+      {/* SITES & KHATA FILTER BAR */}
+      <div className="bg-[#0b1329] border border-slate-700 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-4 shadow-xl">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/30 text-amber-400">
+            <Filter className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-white tracking-wide uppercase">Sites & Khata View Filters</h3>
+            <p className="text-[11px] text-amber-400 font-bold">Total Orders / Sites Found: {filteredOrders.length}</p>
+          </div>
+        </div>
 
-      {orders.length === 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex gap-1">
+            <button
+              type="button"
+              onClick={() => setSiteFilterMode("ALL")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${siteFilterMode === "ALL" ? "bg-amber-500 text-black shadow-lg" : "text-slate-400 hover:text-white"}`}
+            >
+              All Time
+            </button>
+            <button
+              type="button"
+              onClick={() => setSiteFilterMode("MONTHLY")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${siteFilterMode === "MONTHLY" ? "bg-amber-500 text-black shadow-lg" : "text-slate-400 hover:text-white"}`}
+            >
+              Month-wise
+            </button>
+            <button
+              type="button"
+              onClick={() => setSiteFilterMode("WEEKLY")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${siteFilterMode === "WEEKLY" ? "bg-amber-500 text-black shadow-lg" : "text-slate-400 hover:text-white"}`}
+            >
+              Weekly (7 Days)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSiteFilterMode("YEARLY")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${siteFilterMode === "YEARLY" ? "bg-amber-500 text-black shadow-lg" : "text-slate-400 hover:text-white"}`}
+            >
+              Year-wise
+            </button>
+          </div>
+
+          {siteFilterMode === "MONTHLY" && (
+            <div className="flex gap-2">
+              <select
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs font-bold outline-none cursor-pointer"
+              >
+                {getAvailableYears().map((y) => (
+                  <option key={y} value={y} className="bg-slate-900">Year {y}</option>
+                ))}
+              </select>
+
+              <select
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs font-bold outline-none cursor-pointer"
+              >
+                <option value="ALL" className="bg-slate-900">All 12 Months</option>
+                {MONTH_NAMES.map((m, idx) => {
+                  const val = String(idx + 1).padStart(2, "0");
+                  return <option key={val} value={val} className="bg-slate-900">{m}</option>;
+                })}
+              </select>
+            </div>
+          )}
+
+          {siteFilterMode === "YEARLY" && (
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs font-bold outline-none cursor-pointer"
+            >
+              {getAvailableYears().map((y) => (
+                <option key={y} value={y} className="bg-slate-900">Year {y}</option>
+              ))}
+            </select>
+          )}
+
+          <select
+            value={statusFilter}
+            onChange={(e: any) => setStatusFilter(e.target.value)}
+            className="bg-slate-950 border border-slate-700 text-amber-400 rounded-xl px-3 py-1.5 text-xs font-bold outline-none cursor-pointer"
+          >
+            <option value="ALL" className="bg-slate-900">All Statuses</option>
+            <option value="ON_SITE" className="bg-slate-900">On Site</option>
+            <option value="PENDING_BALANCE" className="bg-slate-900">Pending Balance</option>
+            <option value="COMPLETED" className="bg-slate-900">Cleared / Completed</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center px-1">
+        <h2 className="text-lg font-semibold text-slate-300">Live Sites & Outstanding Collections</h2>
+        <span className="text-xs bg-amber-500/20 border border-amber-500/40 text-amber-400 font-extrabold px-3 py-1 rounded-full">
+          Total Count: #{filteredOrders.length}
+        </span>
+      </div>
+
+      {filteredOrders.length === 0 && (
         <div className="bg-slate-800/60 border border-slate-700 p-8 rounded-lg text-center text-slate-400 text-sm">
-          No active orders recorded yet.
+          No orders match the selected filter.
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4">
-        {orders.map((ord) => {
+        {filteredOrders.map((ord, index) => {
           const totalPaid = getTotalPaid(ord.payments);
           const finalBill = ord.finalLumpSum || 0;
           const balanceRemaining = Math.max(0, finalBill - totalPaid);
 
           return (
             <div key={ord.id} className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col md:flex-row justify-between gap-4 relative shadow-xl">
-              <div className="space-y-1.5 flex-1">
+              {/* Sequential Number Badge (1, 2, 3...) */}
+              <div className="absolute -top-3 -left-3 bg-amber-500 text-black font-black w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-lg border-2 border-slate-900">
+                {index + 1}
+              </div>
+
+              <div className="space-y-1.5 flex-1 pl-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="font-bold text-lg text-white">{ord.customerName}</span>
                   {ord.status === "ON_SITE" && <span className="bg-blue-500/20 text-blue-400 text-xs px-2.5 py-0.5 rounded-full border border-blue-500/30 font-semibold">ON SITE</span>}

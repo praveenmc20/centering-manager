@@ -240,7 +240,7 @@ export default function CenteringYardManager() {
     });
 
     let centeringOutflows = 0;
-    const isCentering = (src: string) => src && (src.includes("Centering") || src === "Centering Cash");
+    const isCentering = (src: string) => src && (src.includes("Centering") || src === "Centering Cash" || src.includes("Transport"));
 
     pavanExpenses.forEach((pe) => { if (isCentering(pe.source)) centeringOutflows += Number(pe.amount); });
     jcExpenses.forEach((je) => { if (isCentering(je.source)) centeringOutflows += Number(je.amount); });
@@ -302,29 +302,6 @@ export default function CenteringYardManager() {
     const liftedNet = Math.max(0, Math.round(liftedGross - liftedOutflows));
     sources.push({ id: "Margadarshi Lifted Cash", label: "💰 Margadarshi Lifted Cash", availableBalance: liftedNet });
 
-    [...pavanBorrowings, ...jcBorrowings].forEach((b) => {
-      const loanTotal = Number(b.amount || 0);
-      let loanSpent = 0;
-      const loanSourceId = `Loan: ${b.person_name}`;
-
-      const isThisLoan = (src: string) => src && (src.includes(b.person_name || "") || src === loanSourceId);
-      pavanExpenses.forEach((pe) => { if (isThisLoan(pe.source)) loanSpent += Number(pe.amount); });
-      jcExpenses.forEach((je) => { if (isThisLoan(je.source)) loanSpent += Number(je.amount); });
-      pavanRepayments.forEach((pr) => { if (isThisLoan(pr.source)) loanSpent += Number(pr.amount); });
-      jcRepayments.forEach((jr) => { if (isThisLoan(jr.source)) loanSpent += Number(jr.amount); });
-      cardRepayments.forEach((cr) => { if (isThisLoan(cr.source)) loanSpent += Number(cr.amount); });
-      vehicleEmis.forEach((v) => (v.payments || []).forEach((vp) => { if (isThisLoan(vp.source)) loanSpent += Number(vp.amount); }));
-      margadarshiChits.forEach((m) => (m.payments || []).forEach((mp: any) => { if (isThisLoan(mp.source)) loanSpent += Number(mp.amount || 0); }));
-      dharmasthalaChits.forEach((d) => (d.payments || []).forEach((dp) => { if (isThisLoan(dp.source)) loanSpent += Number(dp.amount); }));
-
-      const loanRemaining = Math.max(0, Math.round(loanTotal - loanSpent));
-      sources.push({
-        id: loanSourceId,
-        label: `🤝 Loan from ${b.person_name}`,
-        availableBalance: loanRemaining
-      });
-    });
-
     sources.push({ id: "Pavan Cash", label: "🧑‍🌾 Pavan's Hand Cash", availableBalance: 999999 });
     sources.push({ id: "Personal Cash", label: "💵 Outside / Personal Cash", availableBalance: 999999 });
 
@@ -335,15 +312,24 @@ export default function CenteringYardManager() {
 
   const getCombinedAlerts = () => {
     const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = String(today.getMonth() + 1).padStart(2, "0");
+    const currentYearMonth = `${currentYear}-${currentMonth}`;
     const currentDay = today.getDate();
     const currentDayOfWeek = today.getDay();
     const alerts: any[] = [];
 
+    // Credit Cards: Hide if repaid this current month
     creditCards.forEach((c) => {
       const spends = cardSpends.filter((s) => s.card_id === c.id).reduce((sum, s) => sum + Number(s.amount), 0);
       const reps = cardRepayments.filter((r) => r.card_id === c.id).reduce((sum, r) => sum + Number(r.amount), 0);
       const out = Math.max(0, spends - reps);
-      if (out > 0) {
+
+      const hasPaidThisMonth = cardRepayments.some(
+        (r) => r.card_id === c.id && r.repaid_date && r.repaid_date.startsWith(currentYearMonth)
+      );
+
+      if (out > 0 && !hasPaidThisMonth) {
         let diff = c.due_day - currentDay;
         if (diff < 0) diff = 30 + diff;
         if (diff <= 7) {
@@ -357,29 +343,43 @@ export default function CenteringYardManager() {
       }
     });
 
+    // Vehicle EMIs: Hide if paid this current month
     vehicleEmis.forEach((v) => {
-      let diff = v.due_day_of_month - currentDay;
-      if (diff < 0) diff = 30 + diff;
-      if (diff <= 7) {
-        alerts.push({
-          title: `Vehicle EMI: ${v.vehicle_name}`,
-          subtitle: `₹${Number(v.monthly_emi_amount).toLocaleString("en-IN")} due on ${v.due_day_of_month}th`,
-          isUrgent: diff <= 2,
-          onPay: () => setActiveTab("VEHICLE_EMIS")
-        });
+      const hasPaidThisMonth = (v.payments || []).some(
+        (p: any) => p.paid_date && p.paid_date.startsWith(currentYearMonth)
+      );
+
+      if (!hasPaidThisMonth) {
+        let diff = v.due_day_of_month - currentDay;
+        if (diff < 0) diff = 30 + diff;
+        if (diff <= 7) {
+          alerts.push({
+            title: `Vehicle EMI: ${v.vehicle_name}`,
+            subtitle: `₹${Number(v.monthly_emi_amount).toLocaleString("en-IN")} due on ${v.due_day_of_month}th`,
+            isUrgent: diff <= 2,
+            onPay: () => setActiveTab("VEHICLE_EMIS")
+          });
+        }
       }
     });
 
+    // Margadarshi Chits: Hide if paid this current month
     margadarshiChits.forEach((m) => {
-      let diff = m.monthly_due_day - currentDay;
-      if (diff < 0) diff = 30 + diff;
-      if (diff <= 7) {
-        alerts.push({
-          title: `Margadarshi Chit: ${m.member_name}`,
-          subtitle: `Chit payment due on ${m.monthly_due_day}th`,
-          isUrgent: diff <= 2,
-          onPay: () => setActiveTab("MARGADARSHI")
-        });
+      const hasPaidThisMonth = (m.payments || []).some(
+        (p: any) => p.paid_date && p.paid_date.startsWith(currentYearMonth)
+      );
+
+      if (!hasPaidThisMonth) {
+        let diff = m.monthly_due_day - currentDay;
+        if (diff < 0) diff = 30 + diff;
+        if (diff <= 7) {
+          alerts.push({
+            title: `Margadarshi Chit: ${m.member_name}`,
+            subtitle: `Chit payment due on ${m.monthly_due_day}th`,
+            isUrgent: diff <= 2,
+            onPay: () => setActiveTab("MARGADARSHI")
+          });
+        }
       }
     });
 
